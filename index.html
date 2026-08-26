@@ -110,7 +110,8 @@ const DEFAULT_SHOPS = [
   { id:'batna', name:'محل باتنة' },
   { id:'setif', name:'محل سطيف' },
 ];
-let shopsRegistry = { masterPin:null, masterSheetUrl:'', shops:[] };
+const DEFAULT_MASTER_SHEET_URL = "https://script.google.com/macros/s/AKfycbyMYwOtQx48RRQbICXd0rZVOY6M6MlS4J9BWEkLzMGhXbh0VekHq8pJmS6e-5CG-DShvA/exec";
+let shopsRegistry = { masterPin:null, masterSheetUrl: DEFAULT_MASTER_SHEET_URL, shops:[] };
 
 async function fbGetRaw(path){
   const res = await fetch(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/${path}.json`);
@@ -125,9 +126,19 @@ async function fbSetRaw(path, value){
 async function loadShopsRegistry(){
   try{
     const r = await fbGetRaw('shopsRegistry');
-    if(r && r.shops && r.shops.length){ shopsRegistry = r; }
-    else { shopsRegistry = { masterPin:null, masterSheetUrl:'', shops:DEFAULT_SHOPS.slice() }; await fbSetRaw('shopsRegistry', shopsRegistry); }
-  }catch(e){ shopsRegistry = { masterPin:null, masterSheetUrl:'', shops:DEFAULT_SHOPS.slice() }; }
+    if(r && r.shops && r.shops.length){
+      shopsRegistry = r;
+      if(!shopsRegistry.masterSheetUrl){
+        shopsRegistry.masterSheetUrl = DEFAULT_MASTER_SHEET_URL;
+        fbSetRaw('shopsRegistry', shopsRegistry).catch(()=>{});
+      }
+    } else {
+      shopsRegistry = { masterPin:null, masterSheetUrl: DEFAULT_MASTER_SHEET_URL, shops:DEFAULT_SHOPS.slice() };
+      await fbSetRaw('shopsRegistry', shopsRegistry);
+    }
+  }catch(e){
+    shopsRegistry = { masterPin:null, masterSheetUrl: DEFAULT_MASTER_SHEET_URL, shops:DEFAULT_SHOPS.slice() };
+  }
 }
 function shopBase(){ return `${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/shops/${state.shopId}`; }
 async function fbGet(key){
