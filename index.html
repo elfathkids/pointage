@@ -87,26 +87,58 @@
   .brandbar .who { font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .brandbar .who b { color: var(--brass-light); font-weight: 700; }
 
-  /* Navigation Tabs */
-  .tab-bar {
-    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px;
-    -ms-overflow-style: none; scrollbar-width: none;
+  /* Navigation Tabs Container & Scroll Controls */
+  .tab-bar-container {
+    position: relative; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;
   }
-  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-scroll-btn {
+    background: var(--paper-card); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+    width: 36px; height: 40px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--ink); font-size: 20px; font-weight: 800; user-select: none;
+    box-shadow: var(--shadow-sm); flex-shrink: 0; transition: var(--transition);
+  }
+  .tab-scroll-btn:hover { background: var(--brass-glow); color: var(--brass); border-color: var(--brass); }
+  .tab-bar-wrapper {
+    flex: 1; overflow: hidden; position: relative;
+  }
+  .tab-bar {
+    display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; margin-bottom: 0;
+    scroll-behavior: smooth; -webkit-overflow-scrolling: touch; cursor: grab; user-select: none;
+  }
+  .tab-bar.grabbing { cursor: grabbing; scroll-behavior: auto; }
+  .tab-bar::-webkit-scrollbar { height: 5px; }
+  .tab-bar::-webkit-scrollbar-track { background: var(--paper-subtle); border-radius: 4px; }
+  .tab-bar::-webkit-scrollbar-thumb { background: var(--brass-light); border-radius: 4px; }
   .tab {
     font-family: 'Cairo'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; cursor: pointer;
     border: none; background: var(--paper-subtle); color: var(--ink-light); border-radius: var(--radius-md);
     transition: var(--transition); white-space: nowrap; display: flex; align-items: center; gap: 6px;
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-sm); flex-shrink: 0;
   }
   .tab:hover { background: #E4DBC5; color: var(--ink); transform: translateY(-1px); }
   .tab.active {
-    background: var(--ink); color: #fff; box-shadow: 0 4px 10px rgba(27,38,59,0.2);
+    background: var(--ink); color: #fff; box-shadow: 0 4px 10px rgba(27,38,59,0.25);
     border-bottom: none;
   }
   .tab .tab-badge {
     background: var(--burgundy-light); color: #fff; font-size: 11px; padding: 1px 7px;
     border-radius: 12px; font-weight: 800;
+  }
+
+  /* Dropdown Quick Navigation Select */
+  .tab-quick-select {
+    background: var(--paper-card); border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+    padding: 0 10px; height: 40px; font-family: 'Cairo'; font-size: 13px; font-weight: 700;
+    color: var(--ink); max-width: 140px; margin-bottom: 0; flex-shrink: 0; cursor: pointer;
+  }
+  .tab-quick-select:focus { border-color: var(--brass); outline: none; }
+
+  /* Swipe Hint Banner */
+  .swipe-hint {
+    display: none; font-size: 11.5px; color: var(--ink-soft); text-align: center; margin-bottom: 8px; font-weight: 600;
+  }
+  @media (max-width: 768px) {
+    .swipe-hint { display: block; }
   }
 
   /* Cards */
@@ -1211,7 +1243,7 @@ function exportActivityCSV(month){
   showToast('تم تحميل السجل العام بصيغة CSV 📥', 'success');
 }
 
-/* ================= RENDER DISPATCH ================= */
+/* ================= RENDER DISPATCH & NAVIGATION ================= */
 function topBar(){
   return `<div class="topbar">
     <div class="topbar-brand">
@@ -1220,6 +1252,158 @@ function topBar(){
     </div>
     ${state.session ? `<div style="font-size:13px; opacity:0.9;">${esc(state.session.name)}</div>` : ''}
   </div>`;
+}
+
+function getRoleTabs(role){
+  if(role==='owner'){
+    const pc = pendingRequestsCount();
+    return [
+      ['today','📅 اليوم'],['overview','💰 ملخص الأجور'],['monthly','⭐ التقييم الشهري'],
+      ['requests',`📩 الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
+      ['history','📋 سجل الحضور'],['report','📊 تقرير العمل'],['duty','📝 المسؤوليات'],
+      ['notifications','🔔 الإشعارات'],['activity','📜 السجل العام'],['workers','👥 المتعاونين'],
+      ['supervisors','🎖️ المشرفون'],['settings','⚙️ الإعدادات']
+    ];
+  } else if(role==='supervisor'){
+    const pc = pendingRequestsCount();
+    return [
+      ['today','📅 اليوم'],['selfcheckin','🕒 حضوري الشخصي'],['attendance','👥 حضور المتعاونين'],
+      ['monthly','⭐ التقييم الشهري'],['requests',`📩 الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
+      ['history','📋 سجل الحضور'],['report','📊 تقرير العمل'],['duty','📝 المسؤوليات'],
+      ['notifications','🔔 الإشعارات'],['activity','📜 السجل العام'],['reports','💰 ملخص الأجور']
+    ];
+  } else if(role==='worker'){
+    const nc = state.session && state.session.id ? pendingNotifCountFor(state.session.id) : 0;
+    return [
+      ['checkin','🕒 تسجيل الحضور'],['mine','💰 أجرتي وتقييمي'],['requests','📩 طلباتي'],
+      ['notifications',`🔔 إشعاراتي${nc?` <span class="tab-badge">${nc}</span>`:''}`]
+    ];
+  }
+  return [];
+}
+
+function renderTabBar(tabs, role){
+  const optionsHtml = tabs.map(t => {
+    const isSelected = state.tab === t[0] ? 'selected' : '';
+    const cleanLabel = t[1].replace(/<[^>]*>/g, '');
+    return `<option value="${t[0]}" ${isSelected}>${cleanLabel}</option>`;
+  }).join('');
+
+  const tabsButtons = tabs.map(t => `
+    <button id="tab-btn-${t[0]}" class="tab ${state.tab===t[0]?'active':''}" onclick="switchAppTab('${t[0]}', '${role}')">
+      ${t[1]}
+    </button>
+  `).join('');
+
+  return `
+  <div class="swipe-hint">👈 اسحب لليمين أو اليسار للتنقل السريع بين الأقسام 👉</div>
+  <div class="tab-bar-container no-print">
+    <button class="tab-scroll-btn" onclick="scrollTabBar(140)" title="تمرير لليمين">›</button>
+    <div class="tab-bar-wrapper" id="tabBarWrapper">
+      <div class="tab-bar" id="mainTabBar">
+        ${tabsButtons}
+        <button class="tab" onclick="logout()" style="color:var(--burgundy-light); margin-right:4px;">خروج 🚪</button>
+      </div>
+    </div>
+    <button class="tab-scroll-btn" onclick="scrollTabBar(-140)" title="تمرير لليسار">‹</button>
+    <select class="tab-quick-select" onchange="switchAppTab(this.value, '${role}')" title="الانتقال السريع لقسم">
+      <option disabled>📋 الانتقال السريع:</option>
+      ${optionsHtml}
+    </select>
+  </div>`;
+}
+
+function scrollTabBar(amount){
+  const el = document.getElementById('mainTabBar');
+  if(el){
+    el.scrollBy({ left: amount, behavior: 'smooth' });
+  }
+}
+
+function switchAppTab(tabKey, role){
+  if(role==='owner') ownerTab(tabKey);
+  else if(role==='supervisor') supTab(tabKey);
+  else if(role==='worker') wTab(tabKey);
+}
+
+function attachTabBarDrag(){
+  const slider = document.getElementById('mainTabBar');
+  if(!slider) return;
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  slider.addEventListener('mousedown', (e) => {
+    isDown = true;
+    slider.classList.add('grabbing');
+    startX = e.pageX - slider.offsetLeft;
+    scrollLeft = slider.scrollLeft;
+  });
+  slider.addEventListener('mouseleave', () => { isDown = false; slider.classList.remove('grabbing'); });
+  slider.addEventListener('mouseup', () => { isDown = false; slider.classList.remove('grabbing'); });
+  slider.addEventListener('mousemove', (e) => {
+    if(!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - slider.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    slider.scrollLeft = scrollLeft - walk;
+  });
+
+  setTimeout(()=>{
+    const activeBtn = document.getElementById(`tab-btn-${state.tab}`);
+    if(activeBtn){
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, 50);
+}
+
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+function initSwipeGestures(){
+  const app = document.getElementById('app');
+  if(!app || app._swipeAttached) return;
+  app._swipeAttached = true;
+
+  app.addEventListener('touchstart', function(e){
+    touchStartX = e.changedTouches[0].clientX;
+    touchStartY = e.changedTouches[0].clientY;
+  }, { passive: true });
+
+  app.addEventListener('touchend', function(e){
+    touchEndX = e.changedTouches[0].clientX;
+    touchEndY = e.changedTouches[0].clientY;
+    handleAppSwipe();
+  }, { passive: true });
+}
+
+function handleAppSwipe(){
+  if(!state.session || !state.screen) return;
+  const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+  if(activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+
+  const tabs = getRoleTabs(state.session.role);
+  if(!tabs || tabs.length <= 1) return;
+
+  const diffX = touchEndX - touchStartX;
+  const diffY = touchEndY - touchStartY;
+
+  if(Math.abs(diffX) > 55 && Math.abs(diffX) > Math.abs(diffY) * 1.4){
+    const idx = tabs.findIndex(t => t[0] === state.tab);
+    if(idx < 0) return;
+
+    if(diffX > 0){
+      if(idx > 0){
+        switchAppTab(tabs[idx - 1][0], state.session.role);
+      }
+    } else {
+      if(idx < tabs.length - 1){
+        switchAppTab(tabs[idx + 1][0], state.session.role);
+      }
+    }
+  }
 }
 
 function render(){
@@ -1233,6 +1417,9 @@ function render(){
   else if(state.screen==='supervisor') body=viewSupervisor();
   else if(state.screen==='worker') body=viewWorker();
   app.innerHTML = topBar() + body;
+  
+  attachTabBarDrag();
+  initSwipeGestures();
 }
 
 function viewShopSelect(){
@@ -1579,12 +1766,14 @@ async function copyShopLink(){
 
 /* ================= SHARED UI ================= */
 function brandbar(){
+  const isOwner = state.session && state.session.role === 'owner';
   return `<div class="brandbar">
     <div style="display:flex; align-items:center; gap:12px;">
       <img src="${LOGO}" alt="شعار المحل" style="height:44px; width:auto; background:#fff; border-radius:8px; padding:3px;">
       <div><h1>${esc(config.shopName)}</h1><div class="sub">دفتر تقييم وأجور المتعاونين</div></div>
     </div>
     <div class="who">
+      ${isOwner ? `<button class="btn btn-brass btn-sm" onclick="ownerTab('settings')" style="font-size:12px; padding:6px 12px; box-shadow:0 2px 8px rgba(0,0,0,0.2);">⚙️ الإعدادات</button>` : ''}
       <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.3);" onclick="refreshData()">🔄 تحديث</button>
       <span>مسجّل الدخول: <b>${esc(state.session.name)}</b></span>
     </div>
@@ -1721,18 +1910,9 @@ const RUBRIC = `
 
 /* ================= OWNER VIEW ================= */
 function viewOwner(){
-  const pc = pendingRequestsCount();
-  const tabs=[
-    ['today','اليوم'],['overview','ملخص الأجور'],['monthly','التقييم الشهري'],
-    ['requests',`الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
-    ['history','سجل الحضور'],['report','تقرير العمل'],['duty','المسؤوليات اليومية'],
-    ['notifications','الإشعارات'],['activity','السجل العام'],['workers','المتعاونين'],
-    ['supervisors','المشرفون'],['settings','الإعدادات']
-  ];
+  const tabs = getRoleTabs('owner');
   let content = state.tab==='workers'?ownerWorkers(): state.tab==='supervisors'?ownerSupervisors(): state.tab==='settings'?ownerSettings(): state.tab==='monthly'?supMonthly(): state.tab==='requests'?reqManage(): state.tab==='history'?attendanceHistory(): state.tab==='activity'?generalActivityLog(): state.tab==='duty'?dutyManage(): state.tab==='notifications'?notificationsManage(): state.tab==='report'?reportManage(): state.tab==='today'?todayDashboard(): ownerOverview();
-  return `${brandbar()}<div class="tab-bar">
-    ${tabs.map(t=>`<button class="tab ${state.tab===t[0]?'active':''}" onclick="ownerTab('${t[0]}')">${t[1]}</button>`).join('')}
-    <button class="tab" onclick="logout()" style="color:var(--burgundy-light);">خروج 🚪</button></div>${content}`;
+  return `${brandbar()}${renderTabBar(tabs, 'owner')}${content}`;
 }
 function ownerTab(t){ state.tab=t; state.detailWorkerId=null; state.editAttendanceId=null; state.confirmDeleteId=null; render(); }
 
@@ -2126,17 +2306,9 @@ async function restoreBackup(){
 
 /* ================= SUPERVISOR VIEW ================= */
 function viewSupervisor(){
-  const pc = pendingRequestsCount();
-  const tabs=[
-    ['today','اليوم'],['selfcheckin','حضوري الشخصي'],['attendance','حضور المتعاونين'],
-    ['monthly','التقييم الشهري'],['requests',`الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
-    ['history','سجل الحضور'],['report','تقرير العمل'],['duty','المسؤوليات'],
-    ['notifications','الإشعارات'],['activity','السجل العام'],['reports','ملخص الأجور']
-  ];
+  const tabs = getRoleTabs('supervisor');
   let content = state.tab==='monthly'?supMonthly(): state.tab==='reports'?supReports(): state.tab==='requests'?reqManage(): state.tab==='history'?attendanceHistory(): state.tab==='activity'?generalActivityLog(): state.tab==='duty'?dutyManage(): state.tab==='notifications'?notificationsManage(): state.tab==='report'?reportManage(): state.tab==='selfcheckin'?supSelfCheckin(): state.tab==='today'?todayDashboard(): supAttendance();
-  return `${brandbar()}<div class="tab-bar">
-    ${tabs.map(t=>`<button class="tab ${state.tab===t[0]?'active':''}" onclick="supTab('${t[0]}')">${t[1]}</button>`).join('')}
-    <button class="tab" onclick="logout()" style="color:var(--burgundy-light);">خروج 🚪</button></div>${content}`;
+  return `${brandbar()}${renderTabBar(tabs, 'supervisor')}${content}`;
 }
 function supTab(t){ state.tab=t; state.detailWorkerId=null; state.editAttendanceId=null; state.confirmDeleteId=null; render(); }
 function workerOptions(selected){ return workers.map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${esc(w.name)}</option>`).join(''); }
@@ -2614,15 +2786,9 @@ function deleteAttendanceRec(id){
 
 /* ================= WORKER VIEW ================= */
 function viewWorker(){
-  const nc = pendingNotifCountFor(state.session.id);
-  const tabs=[
-    ['checkin','تسجيل الحضور'],['mine','أجرتي وتقييمي'],['requests','طلباتي'],
-    ['notifications',`إشعاراتي${nc?` <span class="tab-badge">${nc}</span>`:''}`]
-  ];
+  const tabs = getRoleTabs('worker');
   let content = state.tab==='mine'? workerMine(): state.tab==='requests'? workerRequests(): state.tab==='notifications'? workerNotifications(): workerCheckin();
-  return `${brandbar()}<div class="tab-bar">
-    ${tabs.map(t=>`<button class="tab ${state.tab===t[0]?'active':''}" onclick="wTab('${t[0]}')">${t[1]}</button>`).join('')}
-    <button class="tab" onclick="logout()" style="color:var(--burgundy-light);">خروج 🚪</button></div>${content}`;
+  return `${brandbar()}${renderTabBar(tabs, 'worker')}${content}`;
 }
 function wTab(t){ state.tab=t; render(); }
 function computeShift(time){ return (time && time < (config.shiftSplitTime||'14:30')) ? 'صباحي' : 'مسائي'; }
