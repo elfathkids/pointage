@@ -830,10 +830,28 @@ async function exportToSheet(month){
   if(!config.sheetsWebhookUrl){ showToast('أدخل رابط Google Apps Script أولاً من الإعدادات', 'warning'); return; }
   const rows = workers.map(w=>{
     const c = calcWage(w.id, month);
-    return { month, workerName:c.w.name, present:c.present, expected:c.expected, absence:c.absence,
-      extraDays:c.rec.extraDays||0, salesScore:c.rec.salesScore||0, mediaScore:c.rec.mediaScore||0, evalTotal:c.evalTotal,
-      bonus:Math.round(c.bonus), livePay:Math.round(c.livePay), overtimePay:Math.round(c.overtimePay), transport:c.transport,
-      grossSalary:Math.round(c.grossSalary), total:c.rounded, paid: isPaid(w.id, month) };
+    const workerName = (c && c.w && c.w.name) ? c.w.name : (w.name || 'غير محدد');
+    return {
+      month,
+      workerName: workerName,
+      name: workerName,
+      worker: workerName,
+      baseSalary: c ? c.baseSalary : (w.baseSalary || config.baseSalary),
+      present: c ? c.present : 0,
+      expected: c ? c.expected : (config.expectedMonthDays || 30),
+      absence: c ? c.absence : 0,
+      extraDays: (c && c.rec) ? (c.rec.extraDays || 0) : 0,
+      salesScore: (c && c.rec) ? (c.rec.salesScore || 0) : 0,
+      mediaScore: (c && c.rec) ? (c.rec.mediaScore || 0) : 0,
+      evalTotal: c ? c.evalTotal : 0,
+      bonus: c ? Math.round(c.bonus) : 0,
+      livePay: c ? Math.round(c.livePay) : 0,
+      overtimePay: c ? Math.round(c.overtimePay) : 0,
+      transport: c ? c.transport : 0,
+      grossSalary: c ? Math.round(c.grossSalary) : 0,
+      total: c ? c.rounded : 0,
+      paid: isPaid(w.id, month)
+    };
   });
   try{
     await fetch(config.sheetsWebhookUrl, {
@@ -915,28 +933,31 @@ async function exportAllShopsToMasterSheet(month){
       workers.forEach(w => {
         const c = calcWage(w.id, month);
         const paid = isPaid(w.id, month);
-        shopTotalWage += c.rounded;
-        shopTotalLate += c.lateCount;
+        const wName = (c && c.w && c.w.name) ? c.w.name : (w.name || 'غير محدد');
+        shopTotalWage += (c ? c.rounded : 0);
+        shopTotalLate += (c ? c.lateCount : 0);
         
         allRows.push({
           shopName: shopTitle,
           month: month,
-          workerName: c.w.name,
-          baseSalary: c.baseSalary,
-          present: c.present,
-          expected: c.expected,
-          absence: c.absence,
-          lateCount: c.lateCount,
-          extraDays: c.rec.extraDays || 0,
-          salesScore: c.rec.salesScore || 0,
-          mediaScore: c.rec.mediaScore || 0,
-          evalTotal: c.evalTotal,
-          bonus: Math.round(c.bonus),
-          livePay: Math.round(c.livePay),
-          overtimePay: Math.round(c.overtimePay),
-          transport: c.transport,
-          grossSalary: Math.round(c.grossSalary),
-          total: c.rounded,
+          workerName: wName,
+          name: wName,
+          worker: wName,
+          baseSalary: c ? c.baseSalary : (w.baseSalary || config.baseSalary),
+          present: c ? c.present : 0,
+          expected: c ? c.expected : (config.expectedMonthDays || 30),
+          absence: c ? c.absence : 0,
+          lateCount: c ? c.lateCount : 0,
+          extraDays: (c && c.rec) ? (c.rec.extraDays || 0) : 0,
+          salesScore: (c && c.rec) ? (c.rec.salesScore || 0) : 0,
+          mediaScore: (c && c.rec) ? (c.rec.mediaScore || 0) : 0,
+          evalTotal: c ? c.evalTotal : 0,
+          bonus: c ? Math.round(c.bonus) : 0,
+          livePay: c ? Math.round(c.livePay) : 0,
+          overtimePay: c ? Math.round(c.overtimePay) : 0,
+          transport: c ? c.transport : 0,
+          grossSalary: c ? Math.round(c.grossSalary) : 0,
+          total: c ? c.rounded : 0,
           paid: paid
         });
       });
@@ -1000,14 +1021,23 @@ async function exportAllShopsExcel(month){
       workers.forEach(w => {
         const c = calcWage(w.id, month);
         const paid = isPaid(w.id, month);
-        shopTotalWage += c.rounded;
-        shopTotalLate += c.lateCount;
+        const wName = (c && c.w && c.w.name) ? c.w.name : (w.name || 'غير محدد');
+        shopTotalWage += (c ? c.rounded : 0);
+        shopTotalLate += (c ? c.lateCount : 0);
         
         allRows.push([
-          shopTitle, c.w.name, c.baseSalary, `${c.present}/${c.expected}`, c.absence, c.lateCount,
-          c.rec.extraDays || 0, c.rec.salesScore || 0, c.rec.mediaScore || 0, c.evalTotal,
-          Math.round(c.bonus), Math.round(c.livePay), Math.round(c.overtimePay), c.transport,
-          c.rounded, paid ? 'مصروف' : 'غير مصروف'
+          shopTitle, wName, c ? c.baseSalary : (w.baseSalary || config.baseSalary),
+          `${c ? c.present : 0}/${c ? c.expected : 30}`, c ? c.absence : 0, c ? c.lateCount : 0,
+          (c && c.rec) ? (c.rec.extraDays || 0) : 0,
+          (c && c.rec) ? (c.rec.salesScore || 0) : 0,
+          (c && c.rec) ? (c.rec.mediaScore || 0) : 0,
+          c ? c.evalTotal : 0,
+          c ? Math.round(c.bonus) : 0,
+          c ? Math.round(c.livePay) : 0,
+          c ? Math.round(c.overtimePay) : 0,
+          c ? c.transport : 0,
+          c ? c.rounded : 0,
+          paid ? 'مصروف' : 'غير مصروف'
         ]);
       });
 
@@ -1049,24 +1079,24 @@ async function exportAllShopsExcel(month){
   wsSummary['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 16 }];
   XLSX.utils.book_append_sheet(wb, wsSummary, 'ملخص_المحلات');
 
-  // 2. ورقة تفاصيل كل المتعاونين
+  // 2. ورقة تفاصيل جميع المتعاونين في كل المحلات
   const detailedData = [
-    [`كشف أجور وتفاصيل جميع المتعاونين في كل المحلات — ${month}`],
+    [`كشف أجور جميع المتعاونين — شهر ${month}`],
     [`تاريخ التصدير: ${todayStr()}`],
     [],
     [
-      'المحل', 'المتعاون', 'الراتب الأساسي', 'الحضور', 'الغياب', 'التأخر',
-      'إضافي', 'مبيعات', 'ميديا', 'التقييم', 'المكافأة', 'اللايف', 'إضافي س', 'النقل',
-      'الراتب الصافي', 'حالة الصرف'
+      'المحل', 'اسم المتعاون', 'الراتب الأساسي', 'الحضور/الشهر', 'الغياب المحتسب', 'مرات التأخر',
+      'أيام إضافية', 'نقاط المبيعات', 'نقاط الميديا', 'مجموع التقييم', 'مكافأة التقييم',
+      'اللايف', 'الساعات الإضافية', 'منحة النقل', 'الراتب الصافي', 'حالة الصرف'
     ]
   ];
   allRows.forEach(r => detailedData.push(r));
   detailedData.push([]);
-  detailedData.push(['المجموع الكلي للأجور لجميع المحلات', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotalWages, '']);
+  detailedData.push(['المجموع الكلي', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotalWages, '']);
   const wsDetailed = XLSX.utils.aoa_to_sheet(detailedData);
   wsDetailed['!cols'] = [
-    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
-    { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 12 },
+    { wch: 20 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
+    { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 12 },
     { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 14 }
   ];
   XLSX.utils.book_append_sheet(wb, wsDetailed, 'أجور_جميع_المحلات');
@@ -1080,86 +1110,182 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
     var contents = e.postData.contents;
     var data = JSON.parse(contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var now = new Date();
     
     // 1. تصدير أجور جميع المحلات مجمعة للمدير العام (شامل كل الفروع)
     if (data.type === 'allShopsWages') {
       var sheetName = "أجور_كل_المحلات_" + (data.month || "عام");
       var sheet = ss.getSheetByName(sheetName);
       if (sheet) {
-        sheet.clear(); // تفريغ لتحديث البيانات بدقة دون تكرار
+        sheet.clear(); // تفريغ لتحديث البيانات بدقة
       } else {
         sheet = ss.insertSheet(sheetName);
       }
       
       // الترويسة الرئيسية
-      sheet.appendRow([
+      var headers = [
         "المحل", "الشهر", "اسم المتعاون", "الراتب الأساسي (دج)", "أيام الحضور", "أيام الشهر", "الغياب المحتسب", "مرات التأخر",
         "أيام إضافية", "نقاط المبيعات (/50)", "نقاط الميديا (/50)", "مجموع التقييم (/100)", "مكافأة التقييم (دج)",
         "اللايف (دج)", "الساعات الإضافية (دج)", "النقل (دج)", "الراتب الخام (دج)", "الراتب الصافي المقرب (دج)", "حالة الصرف", "تاريخ التصدير"
-      ]);
-      sheet.getRange(1, 1, 1, 20).setBackground("#1B263B").setFontColor("#FFFFFF").setFontWeight("bold");
+      ];
+      sheet.appendRow(headers);
+      sheet.getRange(1, 1, 1, headers.length)
+        .setBackground("#1B263B")
+        .setFontColor("#FFFFFF")
+        .setFontWeight("bold")
+        .setHorizontalAlignment("center");
       
-      var now = new Date();
       var grandTotal = 0;
       if (data.rows && data.rows.length > 0) {
+        var rowsData = [];
         for (var i = 0; i < data.rows.length; i++) {
           var r = data.rows[i];
-          grandTotal += (r.total || 0);
-          sheet.appendRow([
-            r.shopName || "", r.month || data.month || "", r.workerName || "", r.baseSalary || 0,
-            r.present || 0, r.expected || 30, r.absence || 0, r.lateCount || 0, r.extraDays || 0,
-            r.salesScore || 0, r.mediaScore || 0, r.evalTotal || 0, r.bonus || 0,
-            r.livePay || 0, r.overtimePay || 0, r.transport || 0, r.grossSalary || 0,
-            r.total || 0, r.paid ? "مصروف" : "غير مصروف", now
+          grandTotal += Number(r.total || 0);
+          var wName = r.workerName || r.name || r.worker || (r.w ? r.w.name : "") || "غير محدد";
+          var sName = r.shopName || data.shopName || "المحل الرئيسي";
+          
+          rowsData.push([
+            sName,
+            r.month || data.month || "",
+            wName,
+            Number(r.baseSalary || 0),
+            Number(r.present || 0),
+            Number(r.expected || 30),
+            Number(r.absence || 0),
+            Number(r.lateCount || 0),
+            Number(r.extraDays || 0),
+            Number(r.salesScore || 0),
+            Number(r.mediaScore || 0),
+            Number(r.evalTotal || 0),
+            Number(r.bonus || 0),
+            Number(r.livePay || 0),
+            Number(r.overtimePay || 0),
+            Number(r.transport || 0),
+            Number(r.grossSalary || 0),
+            Number(r.total || 0),
+            r.paid ? "مصروف" : "غير مصروف",
+            now
           ]);
         }
+        
+        // كتابة جميع صفوف البيانات دفعة واحدة لسرعة الأداء
+        if (rowsData.length > 0) {
+          sheet.getRange(2, 1, rowsData.length, headers.length).setValues(rowsData);
+          sheet.getRange(2, 4, rowsData.length, 1).setNumberFormat("#,##0");
+          sheet.getRange(2, 13, rowsData.length, 6).setNumberFormat("#,##0");
+        }
+        
+        // تفعيل الفلتر التلقائي على نطاق البيانات (من الصف 1 إلى آخر صف من العمال)
+        var lastDataRow = sheet.getLastRow();
+        var oldFilter = sheet.getFilter();
+        if (oldFilter) { oldFilter.remove(); }
+        if (lastDataRow > 1) {
+          sheet.getRange(1, 1, lastDataRow, headers.length).createFilter();
+        }
+        
+        // إضافة سطر المجموع الكلي أسفل الجدول
         sheet.appendRow([]);
         sheet.appendRow(["المجموع الكلي لجميع المحلات", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", grandTotal, "", ""]);
-        var lastRow = sheet.getLastRow();
-        sheet.getRange(lastRow, 1, 1, 20).setBackground("#EDE7D8").setFontWeight("bold");
+        var totalRowIdx = sheet.getLastRow();
+        sheet.getRange(totalRowIdx, 1, 1, headers.length)
+          .setBackground("#EDE7D8")
+          .setFontWeight("bold")
+          .setFontColor("#1B263B");
+        sheet.getRange(totalRowIdx, 18).setNumberFormat("#,##0");
       }
+      
+      // تثبيت السطر الأول (العناوين) والأعمدة الثلاثة الأولى (المحل، الشهر، اسم المتعاون)
+      sheet.setFrozenRows(1);
+      sheet.setFrozenColumns(3);
       
       // ورقة ملخص الفروع
-      var sumSheet = ss.getSheetByName("ملخص_فروع_" + (data.month || "عام"));
-      if (sumSheet) { sumSheet.clear(); } else { sumSheet = ss.insertSheet("ملخص_فروع_" + (data.month || "عام")); }
-      sumSheet.appendRow(["المحل", "عدد المتعاونين", "إجمالي الأجور (دج)", "عدد التأخيرات"]);
-      sumSheet.getRange(1, 1, 1, 4).setBackground("#A87919").setFontColor("#FFFFFF").setFontWeight("bold");
+      var sumSheetName = "ملخص_فروع_" + (data.month || "عام");
+      var sumSheet = ss.getSheetByName(sumSheetName);
+      if (sumSheet) { sumSheet.clear(); } else { sumSheet = ss.insertSheet(sumSheetName); }
+      var sumHeaders = ["المحل", "عدد المتعاونين", "إجمالي الأجور (دج)", "عدد التأخيرات"];
+      sumSheet.appendRow(sumHeaders);
+      sumSheet.getRange(1, 1, 1, 4).setBackground("#A87919").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
+      
       if (data.summary && data.summary.length > 0) {
+        var sumRows = [];
         for (var s = 0; s < data.summary.length; s++) {
           var sm = data.summary[s];
-          sumSheet.appendRow([sm.shopName, sm.workerCount, sm.totalWage, sm.totalLate]);
+          sumRows.push([sm.shopName, sm.workerCount, sm.totalWage, sm.totalLate]);
         }
+        sumSheet.getRange(2, 1, sumRows.length, 4).setValues(sumRows);
+        sumSheet.getRange(2, 3, sumRows.length, 1).setNumberFormat("#,##0");
+        
+        var sumFilter = sumSheet.getFilter();
+        if (sumFilter) { sumFilter.remove(); }
+        sumSheet.getRange(1, 1, sumSheet.getLastRow(), 4).createFilter();
       }
+      sumSheet.setFrozenRows(1);
       
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", totalWorkers: data.rows.length })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", count: data.rows.length })).setMimeType(ContentService.MimeType.JSON);
     }
     
     // 2. تصدير أجور محل واحد
     else if (data.type === 'wages') {
       var sheetName = "الأجور_" + (data.month || "عام");
       var sheet = ss.getSheetByName(sheetName);
-      if (!sheet) {
+      if (sheet) {
+        sheet.clear();
+      } else {
         sheet = ss.insertSheet(sheetName);
-        sheet.appendRow([
-          "المحل", "الشهر", "اسم المتعاون", "أيام الحضور", "أيام الشهر", "الغياب",
-          "أيام إضافية", "نقاط المبيعات", "نقاط الميديا", "مجموع التقييم", "مكافأة التقييم (دج)",
-          "اللايف (دج)", "الساعات الإضافية (دج)", "النقل (دج)", "الراتب الخام (دج)", "الراتب الصافي (دج)", "حالة الصرف", "تاريخ التصدير"
-        ]);
-        sheet.getRange(1, 1, 1, 18).setBackground("#1B263B").setFontColor("#FFFFFF").setFontWeight("bold");
       }
-      var now = new Date();
+      var headers = [
+        "المحل", "الشهر", "اسم المتعاون", "الراتب الأساسي (دج)", "أيام الحضور", "أيام الشهر", "الغياب المحتسب",
+        "أيام إضافية", "نقاط المبيعات (/50)", "نقاط الميديا (/50)", "مجموع التقييم (/100)", "مكافأة التقييم (دج)",
+        "اللايف (دج)", "الساعات الإضافية (دج)", "النقل (دج)", "الراتب الخام (دج)", "الراتب الصافي المقرب (دج)", "حالة الصرف", "تاريخ التصدير"
+      ];
+      sheet.appendRow(headers);
+      sheet.getRange(1, 1, 1, headers.length).setBackground("#1B263B").setFontColor("#FFFFFF").setFontWeight("bold").setHorizontalAlignment("center");
+      
       if (data.rows && data.rows.length > 0) {
+        var rowsData = [];
+        var totalWageSingle = 0;
         for (var i = 0; i < data.rows.length; i++) {
           var r = data.rows[i];
-          sheet.appendRow([
-            data.shopName || "", r.month || data.month || "", r.workerName || "",
-            r.present || 0, r.expected || 30, r.absence || 0, r.extraDays || 0,
-            r.salesScore || 0, r.mediaScore || 0, r.evalTotal || 0, r.bonus || 0,
-            r.livePay || 0, r.overtimePay || 0, r.transport || 0, r.grossSalary || 0,
-            r.total || 0, r.paid ? "مصروف" : "غير مصروف", now
+          totalWageSingle += Number(r.total || 0);
+          var wName = r.workerName || r.name || r.worker || (r.w ? r.w.name : "") || "غير محدد";
+          rowsData.push([
+            data.shopName || "",
+            r.month || data.month || "",
+            wName,
+            Number(r.baseSalary || 0),
+            Number(r.present || 0),
+            Number(r.expected || 30),
+            Number(r.absence || 0),
+            Number(r.extraDays || 0),
+            Number(r.salesScore || 0),
+            Number(r.mediaScore || 0),
+            Number(r.evalTotal || 0),
+            Number(r.bonus || 0),
+            Number(r.livePay || 0),
+            Number(r.overtimePay || 0),
+            Number(r.transport || 0),
+            Number(r.grossSalary || 0),
+            Number(r.total || 0),
+            r.paid ? "مصروف" : "غير مصروف",
+            now
           ]);
         }
+        sheet.getRange(2, 1, rowsData.length, headers.length).setValues(rowsData);
+        sheet.getRange(2, 4, rowsData.length, 1).setNumberFormat("#,##0");
+        sheet.getRange(2, 12, rowsData.length, 6).setNumberFormat("#,##0");
+        
+        var oldF = sheet.getFilter();
+        if (oldF) { oldF.remove(); }
+        sheet.getRange(1, 1, sheet.getLastRow(), headers.length).createFilter();
+        
+        sheet.appendRow([]);
+        sheet.appendRow(["المجموع الكلي", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", totalWageSingle, "", ""]);
+        var lRow = sheet.getLastRow();
+        sheet.getRange(lRow, 1, 1, headers.length).setBackground("#EDE7D8").setFontWeight("bold");
+        sheet.getRange(lRow, 17).setNumberFormat("#,##0");
       }
+      sheet.setFrozenRows(1);
+      sheet.setFrozenColumns(3);
       return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
     }
     
