@@ -9,6 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Markazi+Text:wght@500;600;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <!-- SheetJS for real Excel (.xlsx) export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- QRCode.js and jsQR for QR Code generation and camera scanning -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
   :root {
     --paper: #F6F3EB;
@@ -397,9 +400,25 @@
     background: var(--paper-subtle); cursor: pointer; font-size: 13px; font-weight: 700;
     text-align: center; transition: var(--transition); user-select: none;
   }
-  .duty-chip.active {
-    background: var(--forest-bg); border-color: var(--forest); color: var(--forest);
-    box-shadow: 0 2px 6px rgba(21,128,61,0.15);
+  /* QR Code & Scanner Styles */
+  .qr-scan-laser {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #22C55E, transparent);
+    box-shadow: 0 0 14px #22C55E;
+    animation: qrScanMove 2s ease-in-out infinite alternate;
+  }
+  @keyframes qrScanMove {
+    0% { top: 10%; }
+    100% { top: 90%; }
+  }
+  .qr-scanner-frame {
+    position: relative; width: 100%; max-width: 320px; aspect-ratio: 1/1;
+    border-radius: var(--radius-lg); overflow: hidden; border: 2px solid var(--brass-light);
+    box-shadow: 0 0 30px rgba(212,175,55,0.35); background: #000;
+  }
+  .qr-box-preview {
+    background: #fff; padding: 14px; border: 2px solid var(--brass);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: inline-block;
   }
 </style>
 </head>
@@ -407,6 +426,22 @@
 
 <div id="toast-container"></div>
 <div id="app"><div class="empty">جارِ التحميل...</div></div>
+
+<!-- Fullscreen In-App QR Scanner Camera Modal -->
+<div id="qr-scanner-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(10,15,25,0.96); z-index:99999; flex-direction:column; align-items:center; justify-content:center; color:#fff; padding:20px;">
+  <div style="width:100%; max-width:340px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <div style="font-weight:800; font-size:18px;">📷 مسح رمز QR للمحل</div>
+    <button class="btn btn-danger btn-sm" onclick="closeQRScanner()">إلغاء ✕</button>
+  </div>
+  <div class="qr-scanner-frame">
+    <video id="qr-video" playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+    <canvas id="qr-canvas" style="display:none;"></canvas>
+    <div class="qr-scan-laser"></div>
+  </div>
+  <div style="margin-top:20px; font-size:14px; opacity:0.9; text-align:center; max-width:320px; line-height:1.5;">
+    وجّه كاميرا هاتفك نحو ملصق الباركود المعلق في المحل ليتم تسجيل حضورك في ثانية واحدة ✓
+  </div>
+</div>
 
 <script>
 /* ====== TOAST NOTIFICATION SYSTEM (بديل احترافي لـ alert) ====== */
@@ -1675,6 +1710,12 @@ function render(){
   
   attachTabBarDrag();
   initSwipeGestures();
+  
+  setTimeout(() => {
+    if(document.getElementById('shop-qr-preview')){
+      renderShopQRToElement('shop-qr-preview', 180);
+    }
+  }, 40);
 }
 
 function viewShopSelect(){
@@ -2563,6 +2604,24 @@ function ownerSettings(){
   </div>
 
   <div class="card">
+    <div class="card-header">
+      <h2>📷 رمز QR المحل لتسجيل الحضور السريع</h2>
+    </div>
+    <p class="muted">اطبع ملصق الباركود هذا وعلقه في المحل (عند المدخل أو الكاشير). يستطيع المتعاونون مسحه بكاميرا هواتفهم لتسجيل حضورهم وانصرافهم في ثانية واحدة دون كتابة أي شيء.</p>
+    <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap; margin:16px 0; background:var(--paper-subtle); padding:16px; border-radius:var(--radius-lg); border:1.5px solid var(--line);">
+      <div id="shop-qr-preview" class="qr-box-preview"></div>
+      <div style="flex:1; min-width:240px;">
+        <div style="font-weight:800; font-size:17px; color:var(--ink); margin-bottom:4px;">ملصق الحضور الذكي: <b>${esc(config.shopName)}</b></div>
+        <div class="muted" style="font-size:12.5px; margin-bottom:14px;">الرابط المشفر: <code style="font-size:11px; word-break:break-all; background:#fff; padding:2px 6px; border-radius:4px;">${getShopQRUrl()}</code></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-forest" onclick="printShopQRPoster()">🖨️ طباعة ملصق المحل (جاهز A4/A5)</button>
+          <button class="btn btn-outline btn-sm" onclick="refreshShopQRToken()">🔄 تجديد رمز الأمان للـ QR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>النسخ الاحتياطي والاستعادة</h2>
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
       <button class="btn btn-brass" onclick="downloadBackup()">📥 تنزيل نسخة احتياطية كاملة (JSON)</button>
@@ -2642,8 +2701,168 @@ async function restoreBackup(){
     ]);
     showToast('تمت استعادة البيانات بنجاح 🎉', 'success');
     render();
-  }catch(e){
-    showToast('حدث خطأ أثناء الاستعادة، تحقق من الإنترنت', 'error');
+/* ================= QR CODE MANAGEMENT & SCANNER ================= */
+function getShopQRUrl(){
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('shop', state.shopId);
+  url.searchParams.set('qr', (config && config.qrToken) ? config.qrToken : state.shopId);
+  return url.toString();
+}
+
+function renderShopQRToElement(containerId, size = 180){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = '';
+  const qrUrl = getShopQRUrl();
+  if(window.QRCode){
+    new QRCode(el, {
+      text: qrUrl,
+      width: size,
+      height: size,
+      colorDark: "#1B263B",
+      colorLight: "#FFFFFF",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  } else {
+    const imgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(qrUrl)}&color=1B263B`;
+    el.innerHTML = `<img src="${imgUrl}" alt="QR Code" style="width:${size}px; height:${size}px; border-radius:8px;">`;
+  }
+}
+
+function printShopQRPoster(){
+  const qrUrl = getShopQRUrl();
+  const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(qrUrl)}&color=1B263B`;
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>ملصق الحضور الذكي — ${esc(config.shopName)}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Markazi+Text:wght@700&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Cairo', sans-serif; text-align: center; padding: 30px 20px; background: #fff; color: #1B263B; margin: 0; }
+        .poster { max-width: 550px; margin: 0 auto; border: 10px double #A87919; border-radius: 24px; padding: 36px 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); background: #FFFDF8; }
+        .logo { height: 85px; margin-bottom: 8px; }
+        h1 { font-family: 'Markazi Text', serif; font-size: 38px; margin: 0 0 4px; color: #1B263B; }
+        .subtitle { font-size: 17px; color: #A87919; font-weight: 800; margin-bottom: 20px; }
+        .qr-box { background: #F6F3EB; border: 3px dashed #A87919; border-radius: 18px; padding: 20px; display: inline-block; margin-bottom: 20px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.05); }
+        .qr-box img { width: 280px; height: 280px; display: block; border-radius: 8px; }
+        .instructions { font-size: 16px; font-weight: 700; color: #334155; line-height: 1.6; margin-bottom: 20px; }
+        .step { background: #EDE7D8; padding: 8px 16px; border-radius: 20px; display: inline-block; margin: 4px; font-size: 14px; font-weight: 800; color: #1B263B; }
+        .footer { font-size: 13px; color: #64748B; margin-top: 20px; border-top: 1px solid #DFD7C2; padding-top: 14px; font-weight: 600; }
+        @media print { .no-print { display: none; } body { padding: 0; } .poster { border-width: 6px; box-shadow: none; } }
+      </style>
+    </head>
+    <body>
+      <div class="no-print" style="margin-bottom:20px;">
+        <button onclick="window.print()" style="padding:12px 24px; font-family:'Cairo'; font-size:16px; font-weight:700; background:#15803D; color:#fff; border:none; border-radius:8px; cursor:pointer;">🖨️ طباعة الملصق الآن (A4)</button>
+      </div>
+      <div class="poster">
+        <img class="logo" src="${LOGO}" alt="الفتح">
+        <h1>${esc(config.shopName)}</h1>
+        <div class="subtitle">نظام تسجيل الحضور والانصراف الذكي</div>
+        <div class="qr-box">
+          <img src="${qrImg}" alt="QR Code">
+        </div>
+        <div class="instructions">
+          📱 <b>امسح الرمز بكاميرا هاتفك لتسجيل الحضور فوراً</b>
+          <div style="margin-top:10px;">
+            <span class="step">1. افتح كاميرا هاتفك</span>
+            <span class="step">2. وجّه الكاميرا للرمز</span>
+            <span class="step">3. تم تسجيل حضورك في ثانية ✓</span>
+          </div>
+        </div>
+        <div class="footer">الفتح — دفتر تقييم وأجور المتعاونين</div>
+      </div>
+    </body>
+    </html>
+  `);
+  win.document.close();
+}
+
+async function refreshShopQRToken(){
+  if(!confirm('هل تريد بالتأكيد تجديد رمز QR الأمني؟ سيتطلب ذلك إعادة طباعة الملصق.')) return;
+  config.qrToken = uid();
+  saveConfig();
+  logActivity(`${state.session.name} جدّد رمز QR الأمني للمحل`);
+  showToast('تم تجديد رمز QR الأمني بنجاح ✅', 'success');
+  render();
+}
+
+let qrStream = null;
+let qrScanInterval = null;
+
+async function openQRScanner(){
+  const modal = document.getElementById('qr-scanner-modal');
+  if(!modal) return;
+  modal.style.display = 'flex';
+  const video = document.getElementById('qr-video');
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = qrStream;
+    video.setAttribute('playsinline', true);
+    await video.play();
+    qrScanInterval = requestAnimationFrame(scanQRFrame);
+  } catch(err) {
+    console.error(err);
+    showToast('تعذر فتح الكاميرا، تأكد من إعطاء الإذن للمتصفح بالوصول للكاميرا', 'error', 4000);
+    closeQRScanner();
+  }
+}
+
+function scanQRFrame(){
+  const video = document.getElementById('qr-video');
+  const canvas = document.getElementById('qr-canvas');
+  if(!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA){
+    if(qrStream) qrScanInterval = requestAnimationFrame(scanQRFrame);
+    return;
+  }
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  
+  if(window.jsQR){
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    if(code && code.data){
+      handleScannedQR(code.data);
+      return;
+    }
+  }
+  if(qrStream) qrScanInterval = requestAnimationFrame(scanQRFrame);
+}
+
+function closeQRScanner(){
+  if(qrScanInterval) cancelAnimationFrame(qrScanInterval);
+  if(qrStream){
+    qrStream.getTracks().forEach(track => track.stop());
+    qrStream = null;
+  }
+  const modal = document.getElementById('qr-scanner-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+async function handleScannedQR(data){
+  closeQRScanner();
+  if(navigator.vibrate) try{ navigator.vibrate([50, 80, 50]); }catch(e){}
+  try {
+    let url;
+    try { url = new URL(data); } catch(e){ url = null; }
+    const scannedShop = url ? url.searchParams.get('shop') : null;
+
+    if(scannedShop && scannedShop === state.shopId){
+      const splitTime = config.shiftSplitTime || '14:30';
+      const activeShift = (nowTime() < splitTime) ? 'صباحي' : 'مسائي';
+      showToast('تم التعرف على رمز المحل بنجاح! جارِ تسجيل الحضور...', 'success');
+      await oneTapSelfIn(activeShift);
+    } else {
+      showToast('رمز QR غير مطابق لهذا المحل', 'error');
+    }
+  } catch(e){
+    showToast('رمز QR غير صالح', 'error');
   }
 }
 
@@ -3419,13 +3638,19 @@ function workerCheckin(){
 
   const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px; font-size:12.5px;">🔒 التسجيل مشروط بالاتصال بشبكة واي فاي المحل</p>` : '';
 
-  // 1. شريط تثبيت التطبيق على الشاشة الرئيسية (PWA)
+  // 1. شريط تثبيت التطبيق على الشاشة الرئيسية وزر مسح الباركود
   const pwaBanner = `
     <div class="pwa-banner">
       <div class="pwa-banner-text">
         📲 <b>تثبيت التطبيق على شاشة هاتفك:</b>
         <div style="font-size:12px; opacity:0.9; margin-top:2px;">اضغط خيارات المتصفح (⋮) ثم «إضافة إلى الشاشة الرئيسية» للدخول بلمسة واحدة كل يوم.</div>
       </div>
+    </div>
+    <div style="text-align:center; margin-bottom:14px;">
+      <button class="btn btn-outline" style="width:100%; max-width:380px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:800; border:1.5px solid var(--brass); color:var(--brass); background:var(--amber-bg); border-radius:var(--radius-md); box-shadow:var(--shadow-sm);" onclick="openQRScanner()">
+        <span style="font-size:20px;">📷</span>
+        <span>مسح رمز QR المحل للحضور الفوري</span>
+      </button>
     </div>
   `;
 
@@ -3785,8 +4010,25 @@ window.addEventListener('DOMContentLoaded', async function(){
   await loadShopsRegistry();
   const params = new URLSearchParams(window.location.search);
   const shopParam = params.get('shop');
+  const qrParam = params.get('qr');
+
   if(shopParam && shopsRegistry.shops.some(s=>s.id===shopParam)){
-    selectShop(shopParam);
+    state.shopId = shopParam;
+    state.screen = 'loading';
+    document.getElementById('app').innerHTML = '<div class="empty">جارِ التحميل...</div>';
+    await loadAll();
+
+    // إذا تم المسح عبر كاميرا الهاتف مباشرة وكان المتعاون متصلاً
+    if(qrParam && state.session && state.session.role === 'worker'){
+      const splitTime = (config && config.shiftSplitTime) ? config.shiftSplitTime : '14:30';
+      const activeShift = (nowTime() < splitTime) ? 'صباحي' : 'مسائي';
+      const today = todayStr();
+      const rec = attendance.find(a => a.workerId === state.session.id && a.date === today && a.shift === activeShift);
+      if(!rec){
+        showToast('تم مسح رمز QR بنجاح! جارِ تسجيل حضورك...', 'success');
+        await oneTapSelfIn(activeShift);
+      }
+    }
   } else {
     state.screen = 'shopselect';
     render();
