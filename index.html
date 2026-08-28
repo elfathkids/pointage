@@ -733,35 +733,55 @@ function exportWagesExcel(month){
   showToast('تم تحميل ملف Excel للأجور بنجاح 📊', 'success');
 }
 
-// تصدير سجل الحضور والانصراف إلى ملف Excel
+// تصدير سجل الحضور والانصراف إلى ملف Excel (مشرفين ومتعاونين)
 function exportAttendanceExcel(month){
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
-  const rows = attendance.filter(a=>a.date.slice(0,7)===month && (!state.historyWorkerId || a.workerId===state.historyWorkerId))
-    .sort((a,b)=> a.date.localeCompare(b.date));
+  const sname = id => { const s=(config&&config.supervisors)?config.supervisors.find(x=>x.id===id):null; return s?s.name:'؟'; };
+  
+  const workerRows = attendance.filter(a=>a.date.slice(0,7)===month).sort((a,b)=> a.date.localeCompare(b.date));
+  const supRows = supervisorAttendance.filter(a=>a.date.slice(0,7)===month).sort((a,b)=> a.date.localeCompare(b.date));
 
-  if(!rows.length){ showToast('لا توجد سجلات حضور لهذا الشهر', 'warning'); return; }
+  if(!workerRows.length && !supRows.length){ showToast('لا توجد سجلات حضور لهذا الشهر', 'warning'); return; }
 
   const shopName = config ? config.shopName : 'المحل';
-  const data = [
-    [`سجل الحضور والانصراف — ${shopName}`],
+  const wb = XLSX.utils.book_new();
+
+  // 1. ورقة حضور المشرفين والمسؤولين
+  const supData = [
+    [`سجل حضور المشرفين والمسؤولين — ${shopName}`],
     [`الشهر: ${month}`, `تاريخ الاستخراج: ${todayStr()}`],
     [],
-    ['التاريخ', 'المتعاون', 'الفوج', 'وقت الدخول', 'وقت الخروج', 'حالة التأخر', 'الملاحظات']
+    ['التاريخ', 'اسم المشرف / المسؤول', 'الصفة', 'الفوج', 'وقت الدخول', 'وقت الخروج', 'الانضباط', 'ملاحظات']
   ];
-
-  rows.forEach(r => {
-    data.push([
-      r.date, wname(r.workerId), r.shift || '—', r.checkIn || '—', r.checkOut || '—',
+  supRows.forEach(r => {
+    supData.push([
+      r.date, sname(r.supervisorId), 'مشرف / مسؤول', r.shift || '—', r.checkIn || '—', r.checkOut || '—',
       isLateRecord(r) ? 'متأخر' : 'في الوقت', r.notes || ''
     ]);
   });
+  const wsSups = XLSX.utils.aoa_to_sheet(supData);
+  wsSups['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, wsSups, 'حضور_المشرفين');
 
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = [{ wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 30 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
-  XLSX.writeFile(wb, `سجل_حضور_${shopName.replace(/\s+/g,'_')}_${month}.xlsx`);
-  showToast('تم تصدير سجل الحضور إلى Excel 📋', 'success');
+  // 2. ورقة حضور المتعاونين
+  const workerData = [
+    [`سجل حضور المتعاونين — ${shopName}`],
+    [`الشهر: ${month}`, `تاريخ الاستخراج: ${todayStr()}`],
+    [],
+    ['التاريخ', 'اسم المتعاون', 'الصفة', 'الفوج', 'وقت الدخول', 'وقت الخروج', 'الانضباط', 'الملاحظات']
+  ];
+  workerRows.forEach(r => {
+    workerData.push([
+      r.date, wname(r.workerId), 'متعاون', r.shift || '—', r.checkIn || '—', r.checkOut || '—',
+      isLateRecord(r) ? 'متأخر' : 'في الوقت', r.notes || ''
+    ]);
+  });
+  const wsWorkers = XLSX.utils.aoa_to_sheet(workerData);
+  wsWorkers['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 30 }];
+  XLSX.utils.book_append_sheet(wb, wsWorkers, 'حضور_المتعاونين');
+
+  XLSX.writeFile(wb, `سجل_حضور_المشرفين_والمتعاونين_${shopName.replace(/\s+/g,'_')}_${month}.xlsx`);
+  showToast('تم تصدير سجل حضور المشرفين والمتعاونين إلى Excel 📋', 'success');
 }
 
 // تصدير تقرير العمل المخصص إلى Excel
@@ -1367,15 +1387,6 @@ async function copyAppsScriptCode(){
   }
 }
 
-async function copyAppsScriptCode(){
-  try{
-    await navigator.clipboard.writeText(APPS_SCRIPT_CODE);
-    showToast('تم نسخ كود Google Apps Script بنجاح! الصقه في الشيت 📋', 'success');
-  }catch(e){
-    prompt('انسخ هذا الكود:', APPS_SCRIPT_CODE);
-  }
-}
-
 function exportActivityCSV(month){
   const rows = activityLog.filter(a=> a.at.slice(0,7)===month).sort((a,b)=> a.at.localeCompare(b.at));
   let csv = '\uFEFF' + 'التاريخ,الوقت,الفاعل,الحدث\n';
@@ -1411,6 +1422,7 @@ function getRoleTabs(role){
     const pc = pendingRequestsCount();
     return [
       ['today','📅 اليوم'],['overview','💰 ملخص الأجور'],['monthly','⭐ التقييم الشهري'],
+      ['attendance','🕒 تسجيل الحضور'],
       ['requests',`📩 الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
       ['history','📋 سجل الحضور'],['report','📊 تقرير العمل'],['duty','📝 المسؤوليات'],
       ['notifications','🔔 الإشعارات'],['activity','📜 السجل العام'],['workers','👥 المتعاونين'],
@@ -1419,7 +1431,7 @@ function getRoleTabs(role){
   } else if(role==='supervisor'){
     const pc = pendingRequestsCount();
     return [
-      ['today','📅 اليوم'],['selfcheckin','🕒 حضوري الشخصي'],['attendance','👥 حضور المتعاونين'],
+      ['today','📅 اليوم'],['selfcheckin','🕒 حضوري الشخصي'],['attendance','🕒 تسجيل الحضور'],
       ['monthly','⭐ التقييم الشهري'],['requests',`📩 الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
       ['history','📋 سجل الحضور'],['report','📊 تقرير العمل'],['duty','📝 المسؤوليات'],
       ['notifications','🔔 الإشعارات'],['activity','📜 السجل العام'],['reports','💰 ملخص الأجور']
@@ -2074,7 +2086,7 @@ const RUBRIC = `
 /* ================= OWNER VIEW ================= */
 function viewOwner(){
   const tabs = getRoleTabs('owner');
-  let content = state.tab==='workers'?ownerWorkers(): state.tab==='supervisors'?ownerSupervisors(): state.tab==='settings'?ownerSettings(): state.tab==='monthly'?supMonthly(): state.tab==='requests'?reqManage(): state.tab==='history'?attendanceHistory(): state.tab==='activity'?generalActivityLog(): state.tab==='duty'?dutyManage(): state.tab==='notifications'?notificationsManage(): state.tab==='report'?reportManage(): state.tab==='today'?todayDashboard(): ownerOverview();
+  let content = state.tab==='workers'?ownerWorkers(): state.tab==='supervisors'?ownerSupervisors(): state.tab==='settings'?ownerSettings(): state.tab==='attendance'?supAttendance(): state.tab==='monthly'?supMonthly(): state.tab==='requests'?reqManage(): state.tab==='history'?attendanceHistory(): state.tab==='activity'?generalActivityLog(): state.tab==='duty'?dutyManage(): state.tab==='notifications'?notificationsManage(): state.tab==='report'?reportManage(): state.tab==='today'?todayDashboard(): ownerOverview();
   return `${brandbar()}${renderTabBar(tabs, 'owner')}${content}`;
 }
 function ownerTab(t){ state.tab=t; state.detailWorkerId=null; state.editAttendanceId=null; state.confirmDeleteId=null; render(); }
@@ -2477,34 +2489,108 @@ function supTab(t){ state.tab=t; state.detailWorkerId=null; state.editAttendance
 function workerOptions(selected){ return workers.map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${esc(w.name)}</option>`).join(''); }
 
 function supAttendance(){
-  const today=todayStr();
-  const todays=attendance.filter(a=>a.date===today);
-  const rows = workers.map(w=>{
+  const today = todayStr();
+  const todaysWorkerAtt = attendance.filter(a=>a.date===today);
+  const todaysSupAtt = supervisorAttendance.filter(a=>a.date===today);
+  const supervisorsList = (config && config.supervisors) ? config.supervisors : [];
+
+  // 1. قسم حضور المشرفين والمسؤولين
+  const supRows = supervisorsList.map(s=>{
     const shiftTags = ['صباحي','مسائي'].map(shift=>{
-      const rec = todays.find(a=>a.workerId===w.id && a.shift===shift);
+      const rec = todaysSupAtt.find(a=>a.supervisorId===s.id && a.shift===shift);
+      const status = !rec ? `<span class="badge badge-absent">${shift}: لم يسجل</span>`
+        : !rec.checkOut ? `<span class="badge badge-open">${shift}: حاضر (${rec.checkIn})</span>`
+        : `<span class="badge badge-present">${shift}: ${rec.checkIn} → ${rec.checkOut}</span>`;
+      
+      const inputId = `sup-mk-time-${s.id}-${shift}`;
+      const btns = `
+        ${!rec ? `
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
+          <button class="btn btn-brass btn-sm" onclick="markSupIn('${s.id}','${shift}', document.getElementById('${inputId}').value)">تسجيل حضور</button>
+        ` : ''}
+        ${rec && !rec.checkOut ? `
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
+          <button class="btn btn-outline btn-sm" onclick="markSupOut('${s.id}','${shift}', document.getElementById('${inputId}').value)">تسجيل انصراف</button>
+        ` : ''}
+      `;
+      return `<div style="margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;"><div>${status}</div><div>${btns}</div></div>`;
+    }).join('');
+
+    return `<div class="list-item" style="flex-direction:column; align-items:stretch; border-right: 4px solid var(--brass); padding-right:12px;">
+      <div style="font-weight:800; font-size:15px; margin-bottom:4px; color:var(--ink);">🎖️ المشرف: <b>${esc(s.name)}</b></div>
+      <div>${shiftTags}</div>
+    </div>`;
+  }).join('');
+
+  // 2. قسم حضور المتعاونين
+  const workerRows = workers.map(w=>{
+    const shiftTags = ['صباحي','مسائي'].map(shift=>{
+      const rec = todaysWorkerAtt.find(a=>a.workerId===w.id && a.shift===shift);
       const status = !rec? `<span class="badge badge-absent">${shift}: غائب</span>`
         : !rec.checkOut? `<span class="badge badge-open">${shift}: حاضر (${rec.checkIn})</span>`
         : `<span class="badge badge-present">${shift}: ${rec.checkIn} → ${rec.checkOut}</span>`;
       const inputId = `mk-time-${w.id}-${shift}`;
       const btns = `${!rec?`
-          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:6px;">
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
           <button class="btn btn-brass btn-sm" onclick="markIn('${w.id}','${shift}', document.getElementById('${inputId}').value)">تسجيل حضور</button>`:''}
         ${rec && !rec.checkOut?`
-          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:6px;">
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
           <button class="btn btn-outline btn-sm" onclick="markOut('${w.id}','${shift}', document.getElementById('${inputId}').value)">تسجيل انصراف</button>`:''}`;
-      return `<div style="margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;"><div>${status}</div><div>${btns}</div></div>`;
+      return `<div style="margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;"><div>${status}</div><div>${btns}</div></div>`;
     }).join('');
     return `<div class="list-item" style="flex-direction:column; align-items:stretch;">
       <div style="font-weight:700; font-size:15px; margin-bottom:4px;">👤 ${esc(w.name)}</div>
       <div>${shiftTags}</div>
     </div>`;
   }).join('');
-  return `<div class="card">
+
+  return `
+  <div class="card">
     <div class="card-header">
-      <h2>حضور المتعاونين اليوم — ${today}</h2>
+      <h2>🎖️ حضور المشرفين والمسؤولين اليوم — ${today}</h2>
     </div>
-    ${rows||'<p class="empty">لا يوجد متعاونين مسجلين</p>'}
+    ${supRows || '<p class="empty">لا يوجد مشرفون مسجلون بعد</p>'}
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h2>👥 حضور المتعاونين اليوم — ${today}</h2>
+    </div>
+    ${workerRows || '<p class="empty">لا يوجد متعاونين مسجلين</p>'}
   </div>`;
+}
+
+function markSupIn(supervisorId, shift, time){
+  if(supervisorAttendance.find(a=>a.supervisorId===supervisorId && a.date===todayStr() && a.shift===shift)) return;
+  const inTime = time || nowTime();
+  supervisorAttendance.push({id:uid(), supervisorId, date:todayStr(), shift, checkIn:inTime, checkOut:null});
+  saveSupervisorAttendance();
+  const s = config.supervisors ? config.supervisors.find(x=>x.id===supervisorId) : null;
+  logActivity(`${state.session.name} سجّل حضور المشرف ${s?s.name:'؟'} (فوج ${shift}) الساعة ${inTime}`);
+  syncToMasterSheet({
+    date: todayStr(), time: inTime, name: s?s.name:'مشرف', role: 'مشرف / مسؤول',
+    shift, action: 'حضور (بواسطة الإدارة)', late: isLateRecord({checkIn: inTime, shift}) ? 'متأخر' : 'في الوقت',
+    mapLink: ''
+  });
+  showToast(`تم تسجيل حضور المشرف ${s?s.name:''}`, 'success');
+  render();
+}
+
+function markSupOut(supervisorId, shift, time){
+  const rec = supervisorAttendance.find(a=>a.supervisorId===supervisorId && a.date===todayStr() && a.shift===shift && !a.checkOut);
+  if(rec){
+    const outTime = time || nowTime();
+    rec.checkOut = outTime;
+    saveSupervisorAttendance();
+    const s = config.supervisors ? config.supervisors.find(x=>x.id===supervisorId) : null;
+    logActivity(`${state.session.name} سجّل انصراف المشرف ${s?s.name:'؟'} (فوج ${shift}) الساعة ${outTime}`);
+    syncToMasterSheet({
+      date: todayStr(), time: outTime, name: s?s.name:'مشرف', role: 'مشرف / مسؤول',
+      shift, action: 'انصراف (بواسطة الإدارة)', late: '—',
+      mapLink: ''
+    });
+    showToast(`تم تسجيل انصراف المشرف ${s?s.name:''}`, 'info');
+    render();
+  }
 }
 
 function markIn(workerId, shift, time){
@@ -2605,14 +2691,67 @@ async function supSelfOut(shift){
 
 function todayDashboard(){
   const today = todayStr();
-  const todaysAtt = attendance.filter(a => a.date === today);
-  const presentWorkerIds = new Set(todaysAtt.filter(a => a.checkIn).map(a => a.workerId));
-  const presentCount = presentWorkerIds.size;
-  const absentCount = Math.max(0, workers.length - presentCount);
+  const todaysWorkerAtt = attendance.filter(a => a.date === today);
+  const presentWorkerIds = new Set(todaysWorkerAtt.filter(a => a.checkIn).map(a => a.workerId));
+  const presentWorkerCount = presentWorkerIds.size;
+  const absentWorkerCount = Math.max(0, workers.length - presentWorkerCount);
   
-  const rows = workers.map(w => {
+  const supervisorsList = (config && config.supervisors) ? config.supervisors : [];
+  const todaysSupAtt = supervisorAttendance.filter(a => a.date === today);
+  const presentSupIds = new Set(todaysSupAtt.filter(a => a.checkIn).map(a => a.supervisorId));
+  const presentSupCount = presentSupIds.size;
+  const absentSupCount = Math.max(0, supervisorsList.length - presentSupCount);
+  
+  const canManage = state.session && (state.session.role === 'owner' || state.session.role === 'supervisor');
+
+  // صفوف المشرفين
+  const supRows = supervisorsList.map(s => {
     const shiftTags = ['صباحي', 'مسائي'].map(shift => {
-      const rec = todaysAtt.find(a => a.workerId === w.id && a.shift === shift);
+      const rec = todaysSupAtt.find(a => a.supervisorId === s.id && a.shift === shift);
+      const isLate = rec && isLateRecord(rec);
+      let statusHtml = '';
+      if(!rec){
+        statusHtml = `<span class="badge badge-absent">${shift}: لم يسجل</span>`;
+      } else if(!rec.checkOut){
+        statusHtml = `<span class="badge badge-open">${shift}: حاضر (${rec.checkIn}) ${isLate?'⚠️ متأخر':''}</span>`;
+      } else {
+        statusHtml = `<span class="badge badge-present">${shift}: ${rec.checkIn} → ${rec.checkOut} ${isLate?'⚠️ متأخر':''}</span>`;
+      }
+      
+      const inputId = `today-sup-time-${s.id}-${shift}`;
+      const btns = canManage ? `
+        ${!rec ? `
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
+          <button class="btn btn-brass btn-sm" onclick="markSupIn('${s.id}', '${shift}', document.getElementById('${inputId}').value)">تسجيل حضور</button>
+        ` : ''}
+        ${rec && !rec.checkOut ? `
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
+          <button class="btn btn-outline btn-sm" onclick="markSupOut('${s.id}', '${shift}', document.getElementById('${inputId}').value)">تسجيل انصراف</button>
+        ` : ''}
+      ` : '';
+
+      return `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:4px;">
+        <div>${statusHtml}</div>
+        <div>${btns}</div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="list-item" style="flex-direction:column; align-items:stretch; border-right: 4px solid var(--brass); padding-right:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="font-weight:800; font-size:15px; color:var(--ink);">🎖️ المشرف: <b>${esc(s.name)}</b></div>
+        ${presentSupIds.has(s.id) 
+          ? `<span class="badge badge-present">حاضر اليوم ✓</span>` 
+          : `<span class="badge badge-absent">غائب / لم يسجل</span>`}
+      </div>
+      <div style="margin-top:6px;">${shiftTags}</div>
+    </div>`;
+  }).join('');
+
+  // صفوف المتعاونين
+  const workerRows = workers.map(w => {
+    const shiftTags = ['صباحي', 'مسائي'].map(shift => {
+      const rec = todaysWorkerAtt.find(a => a.workerId === w.id && a.shift === shift);
       const isLate = rec && isLateRecord(rec);
       let statusHtml = '';
       if(!rec){
@@ -2622,46 +2761,68 @@ function todayDashboard(){
       } else {
         statusHtml = `<span class="badge badge-present">${shift}: ${rec.checkIn} → ${rec.checkOut} ${isLate?'⚠️ متأخر':''}</span>`;
       }
-      return statusHtml;
-    }).join(' ');
+
+      const inputId = `today-w-time-${w.id}-${shift}`;
+      const btns = canManage ? `
+        ${!rec ? `
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
+          <button class="btn btn-brass btn-sm" onclick="markIn('${w.id}', '${shift}', document.getElementById('${inputId}').value)">تسجيل حضور</button>
+        ` : ''}
+        ${rec && !rec.checkOut ? `
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:4px 6px; font-size:12px;">
+          <button class="btn btn-outline btn-sm" onclick="markOut('${w.id}', '${shift}', document.getElementById('${inputId}').value)">تسجيل انصراف</button>
+        ` : ''}
+      ` : '';
+
+      return `<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-top:4px;">
+        <div>${statusHtml}</div>
+        <div>${btns}</div>
+      </div>`;
+    }).join('');
 
     const duty = dutyLog.find(d => d.workerId === w.id && d.date === today);
     const dutyText = dutyRespText(duty);
 
     return `
-    <div class="list-item" style="align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-      <div>
+    <div class="list-item" style="flex-direction:column; align-items:stretch;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
         <div style="font-weight:700; font-size:15px;">👤 ${esc(w.name)}</div>
-        <div style="margin-top:4px;">${shiftTags}</div>
-        ${dutyText ? `<div class="muted" style="margin-top:4px; font-size:12.5px;">📋 المهام: ${esc(dutyText)}</div>` : ''}
-      </div>
-      <div>
         ${presentWorkerIds.has(w.id) 
-          ? `<span class="badge badge-present" style="font-size:13px;">حاضر اليوم ✓</span>` 
-          : `<span class="badge badge-absent" style="font-size:13px;">غائب / لم يسجل</span>`}
+          ? `<span class="badge badge-present">حاضر اليوم ✓</span>` 
+          : `<span class="badge badge-absent">غائب / لم يسجل</span>`}
       </div>
+      <div style="margin-top:6px;">${shiftTags}</div>
+      ${dutyText ? `<div class="muted" style="margin-top:6px; font-size:12.5px;">📋 المهام: ${esc(dutyText)}</div>` : ''}
     </div>`;
   }).join('');
 
   return `
   <div class="stats-grid">
     <div class="stat-card forest">
-      <span class="stat-title">الحاضرون اليوم (${today})</span>
-      <span class="stat-val">${presentCount} / ${workers.length}</span>
-      <span class="stat-sub">متعاون مسجل حضور</span>
+      <span class="stat-title">المشرفون الحاضرون اليوم</span>
+      <span class="stat-val">${presentSupCount} / ${supervisorsList.length}</span>
+      <span class="stat-sub">${absentSupCount} في الانتظار</span>
     </div>
-    <div class="stat-card burgundy">
-      <span class="stat-title">الغائبون أو لم يسجلوا بعد</span>
-      <span class="stat-val">${absentCount}</span>
-      <span class="stat-sub">من أصل ${workers.length} متعاون</span>
+    <div class="stat-card forest">
+      <span class="stat-title">المتعاونون الحاضرون اليوم</span>
+      <span class="stat-val">${presentWorkerCount} / ${workers.length}</span>
+      <span class="stat-sub">${absentWorkerCount} غائبون أو لم يسجلوا بعد</span>
     </div>
   </div>
+
   <div class="card">
     <div class="card-header">
-      <h2>حالة حضور الفريق لليوم — ${today}</h2>
+      <h2>🎖️ حضور المشرفين والمسؤولين اليوم — ${today}</h2>
       <button class="btn btn-outline btn-sm" onclick="refreshData()">🔄 تحديث لحظي</button>
     </div>
-    ${rows || '<p class="empty">لا يوجد متعاونين مسجلين</p>'}
+    ${supRows || '<p class="empty">لا يوجد مشرفون مسجلون في هذا المحل</p>'}
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>👥 حضور المتعاونين اليوم — ${today}</h2>
+    </div>
+    ${workerRows || '<p class="empty">لا يوجد متعاونين مسجلين</p>'}
   </div>`;
 }
 
@@ -2872,31 +3033,6 @@ function reportManage(){
   </div>`;
 }
 
-function todayDashboard(){
-  const today = todayStr();
-  const todays = attendance.filter(a=>a.date===today);
-  const presentNow = todays.filter(a=>a.checkIn && !a.checkOut);
-  const absentToday = workers.filter(w=> !todays.some(a=>a.workerId===w.id));
-  const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
-  return `
-  <div class="stats-grid">
-    <div class="stat-card forest">
-      <span class="stat-title">الحاضرون الآن بالمحل</span>
-      <span class="stat-val amt">${presentNow.length}</span>
-      <span class="stat-sub">فوج صباحي / مسائي</span>
-    </div>
-    <div class="stat-card burgundy">
-      <span class="stat-title">لم يسجلوا بعد</span>
-      <span class="stat-val neg">${absentToday.length}</span>
-      <span class="stat-sub">من أصل ${workers.length} متعاونين</span>
-    </div>
-  </div>
-  <div class="card">
-    <h3>🟢 الحاضرون الآن</h3>
-    ${presentNow.length? presentNow.map(a=>`<div class="list-item"><div>👤 <b>${esc(wname(a.workerId))}</b> — فوج <b>${a.shift}</b> — مسجل منذ الساعة <b>${a.checkIn}</b></div></div>`).join('') : '<p class="empty">لا يوجد أي متعاون حاضر حالياً</p>'}
-  </div>`;
-}
-
 function dutyManage(){
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
   const rows = dutyLog.filter(d=>d.date.slice(0,7)===state.month).sort((a,b)=> b.date.localeCompare(a.date) || a.shift.localeCompare(b.shift));
@@ -2936,34 +3072,75 @@ function generalActivityLog(){
 
 function attendanceHistory(){
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
-  const rows = attendance.filter(a=>a.date.slice(0,7)===state.month && (!state.historyWorkerId || a.workerId===state.historyWorkerId))
-    .sort((a,b)=> b.date.localeCompare(a.date) || wname(a.workerId).localeCompare(wname(b.workerId)));
-  const body = rows.map(r=>{
-    if(state.editAttendanceId===r.id){
-      return `<div class="list-item" style="flex-direction:column; align-items:stretch;">
-        <b>${esc(wname(r.workerId))}</b> — ${r.date}
+  const sname = id => { const s=(config&&config.supervisors)?config.supervisors.find(x=>x.id===id):null; return s?s.name:'؟'; };
+  const supervisorsList = (config&&config.supervisors) ? config.supervisors : [];
+
+  const filter = state.historyFilter || '';
+  
+  // 1. استخراج سجلات المتعاونين المصفاة
+  let workerRows = [];
+  if(!filter || filter === 'all_workers' || (!filter.startsWith('sup_') && filter !== 'all_supervisors')){
+    workerRows = attendance.filter(a => a.date.slice(0,7) === state.month && (!filter || filter === 'all_workers' || a.workerId === filter))
+      .map(a => ({ ...a, roleType: 'worker', displayName: wname(a.workerId) }));
+  }
+
+  // 2. استخراج سجلات المشرفين المصفاة
+  let supRows = [];
+  if(!filter || filter === 'all_supervisors' || filter.startsWith('sup_')){
+    const targetSupId = filter.startsWith('sup_') ? filter.slice(4) : null;
+    supRows = supervisorAttendance.filter(a => a.date.slice(0,7) === state.month && (!targetSupId || a.supervisorId === targetSupId))
+      .map(a => ({ ...a, roleType: 'supervisor', displayName: sname(a.supervisorId) }));
+  }
+
+  // دمج وترتيب السجلات تنازلياً حسب التاريخ والوقت
+  const allHistoryRows = [...supRows, ...workerRows].sort((a,b) => b.date.localeCompare(a.date) || (b.checkIn||'').localeCompare(a.checkIn||''));
+
+  const body = allHistoryRows.map(r => {
+    const isSup = r.roleType === 'supervisor';
+    const editIdKey = isSup ? state.editSupAttendanceId : state.editAttendanceId;
+
+    if(editIdKey === r.id){
+      const inId = isSup ? `att-sup-in-${r.id}` : `att-in-${r.id}`;
+      const outId = isSup ? `att-sup-out-${r.id}` : `att-out-${r.id}`;
+      const noteId = isSup ? `att-sup-note-${r.id}` : `att-note-${r.id}`;
+      const saveFn = isSup ? `saveSupAttendanceEdit('${r.id}')` : `saveAttendanceEdit('${r.id}')`;
+      const cancelFn = isSup ? `state.editSupAttendanceId=null; render();` : `state.editAttendanceId=null; render();`;
+      
+      return `<div class="list-item" style="flex-direction:column; align-items:stretch; background:var(--paper-subtle);">
+        <b>${isSup ? '🎖️ مشرف: ' : '👤 متعاون: '} ${esc(r.displayName)}</b> — ${r.date}
         <div class="row" style="margin-top:6px;">
-          <div><label>وقت الدخول</label><input id="att-in-${r.id}" type="time" value="${r.checkIn||''}"></div>
-          <div><label>وقت الخروج</label><input id="att-out-${r.id}" type="time" value="${r.checkOut||''}"></div>
+          <div><label>وقت الدخول</label><input id="${inId}" type="time" value="${r.checkIn||''}"></div>
+          <div><label>وقت الخروج</label><input id="${outId}" type="time" value="${r.checkOut||''}"></div>
         </div>
-        <label>ملاحظة</label><input id="att-note-${r.id}" value="${esc(r.notes||'')}">
-        <div style="display:flex; gap:6px;">
-          <button class="btn btn-brass btn-sm" onclick="saveAttendanceEdit('${r.id}')">حفظ التعديل</button>
-          <button class="btn btn-outline btn-sm" onclick="state.editAttendanceId=null; render();">إلغاء</button>
+        <label>ملاحظة</label><input id="${noteId}" value="${esc(r.notes||'')}">
+        <div style="display:flex; gap:6px; margin-top:4px;">
+          <button class="btn btn-brass btn-sm" onclick="${saveFn}">حفظ التعديل</button>
+          <button class="btn btn-outline btn-sm" onclick="${cancelFn}">إلغاء</button>
         </div>
       </div>`;
     }
+
     const lateTag = isLateRecord(r) ? `<span class="badge badge-absent">متأخر</span>` : '<span class="badge badge-present">في الوقت</span>';
-    return `<div class="list-item">
+    const roleBadge = isSup ? `<span class="badge badge-open" style="font-weight:700;">🎖️ مشرف / مسؤول</span>` : `<span class="badge badge-present">👤 متعاون</span>`;
+    const mapTag = (r.lat && r.lng) ? `<a href="${mapLink(r.lat, r.lng)}" target="_blank" style="font-size:12px; color:var(--brass); text-decoration:none; margin-right:6px;">📍 موقع التسجيل</a>` : '';
+
+    const editTrigger = isSup ? `state.editSupAttendanceId='${r.id}'; state.confirmDeleteId=null; render();` : `state.editAttendanceId='${r.id}'; state.confirmDeleteId=null; render();`;
+    const deleteTrigger = isSup ? `deleteSupAttendanceRec('${r.id}')` : `deleteAttendanceRec('${r.id}')`;
+
+    return `<div class="list-item" style="${isSup ? 'border-right:3.5px solid var(--brass);' : ''}">
       <div>
-        <b>👤 ${esc(wname(r.workerId))}</b> — ${r.date} ${r.shift?`<span class="badge badge-open">${r.shift}</span>`:''}
-        <span class="muted" style="margin-right:6px;">${r.checkIn||'—'} → ${r.checkOut||'—'}</span> ${lateTag}
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          ${roleBadge} <b>${esc(r.displayName)}</b> — ${r.date} ${r.shift?`<span class="badge badge-open">${r.shift}</span>`:''}
+        </div>
+        <div class="muted" style="margin-top:4px; font-size:13px;">
+          <span>🕒 الدخول: <b>${r.checkIn||'—'}</b> → الخروج: <b>${r.checkOut||'—'}</b></span> ${lateTag} ${mapTag}
+        </div>
         ${r.notes?`<div class="muted" style="margin-top:2px;">💬 ${esc(r.notes)}</div>`:''}
       </div>
       <div style="display:flex; gap:6px;">
-        <button class="btn btn-outline btn-sm" onclick="state.editAttendanceId='${r.id}'; state.confirmDeleteId=null; render();">تعديل</button>
+        <button class="btn btn-outline btn-sm" onclick="${editTrigger}">تعديل</button>
         ${state.confirmDeleteId===r.id
-          ? `<button class="btn btn-danger btn-sm" onclick="deleteAttendanceRec('${r.id}')">تأكيد الحذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
+          ? `<button class="btn btn-danger btn-sm" onclick="${deleteTrigger}">تأكيد الحذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
           : `<button class="btn btn-danger btn-sm" onclick="state.confirmDeleteId='${r.id}'; render();">حذف</button>`}
       </div>
     </div>`;
@@ -2971,31 +3148,24 @@ function attendanceHistory(){
 
   return `<div class="card">
     <div class="card-header">
-      <h2>سجل الحضور والانصراف</h2>
+      <h2>سجل الحضور والانصراف (المشرفين والمتعاونين)</h2>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         ${monthPicker()}
-        <select onchange="state.historyWorkerId=this.value; render();" style="max-width:180px; margin-bottom:0;">
-          <option value="">كل المتعاونين</option>
-          ${workers.map(w=>`<option value="${w.id}" ${state.historyWorkerId===w.id?'selected':''}>${esc(w.name)}</option>`).join('')}
+        <select onchange="state.historyFilter=this.value; render();" style="max-width:220px; margin-bottom:0;">
+          <option value="">كل السجلات (الجميع)</option>
+          <optgroup label="المشرفون والمسؤولون">
+            <option value="all_supervisors" ${state.historyFilter==='all_supervisors'?'selected':''}>🎖️ كل المشرفين</option>
+            ${supervisorsList.map(s=>`<option value="sup_${s.id}" ${state.historyFilter==='sup_'+s.id?'selected':''}>🎖️ المشرف: ${esc(s.name)}</option>`).join('')}
+          </optgroup>
+          <optgroup label="المتعاونون">
+            <option value="all_workers" ${state.historyFilter==='all_workers'?'selected':''}>👥 كل المتعاونين</option>
+            ${workers.map(w=>`<option value="${w.id}" ${state.historyFilter===w.id?'selected':''}>👤 ${esc(w.name)}</option>`).join('')}
+          </optgroup>
         </select>
         <button class="btn btn-forest btn-sm" onclick="exportAttendanceExcel(state.month)">📊 تصدير Excel</button>
       </div>
     </div>
-    ${body || '<p class="empty">لا توجد سجلات حضور لهذا الشهر</p>'}
-  </div>
-  ${supervisorAttendanceCard(state.month)}`;
-}
-
-function supervisorAttendanceCard(month){
-  const sname = id => { const s=config.supervisors.find(x=>x.id===id); return s?s.name:'؟'; };
-  const rows = supervisorAttendance.filter(a=>a.date.slice(0,7)===month)
-    .sort((a,b)=> b.date.localeCompare(a.date) || sname(a.supervisorId).localeCompare(sname(b.supervisorId)));
-  const body = rows.map(r=>`<div class="list-item">
-    <div><b>🎖️ ${esc(sname(r.supervisorId))}</b> — ${r.date} <span class="badge badge-open">${r.shift}</span> <span class="muted">${r.checkIn||'—'} → ${r.checkOut||'—'}</span></div>
-  </div>`).join('');
-  return `<div class="card">
-    <h2>حضور المشرفين والمسؤولين</h2>
-    ${body || '<p class="empty">لا يوجد سجلات حضور مشرفين لهذا الشهر</p>'}
+    ${body || '<p class="empty">لا توجد سجلات حضور مسجلة لهذا الشهر</p>'}
   </div>`;
 }
 
@@ -3021,6 +3191,31 @@ function deleteAttendanceRec(id){
   saveAttendance();
   if(rec) logActivity(`${state.session.name} حذف سجل حضور ${w?w.name:'؟'} ليوم ${rec.date}`);
   showToast('تم حذف السجل', 'info');
+  render();
+}
+
+function saveSupAttendanceEdit(id){
+  const rec = supervisorAttendance.find(a=>a.id===id);
+  if(!rec) return;
+  rec.checkIn = document.getElementById(`att-sup-in-${id}`).value || null;
+  rec.checkOut = document.getElementById(`att-sup-out-${id}`).value || null;
+  rec.notes = document.getElementById(`att-sup-note-${id}`).value.trim();
+  state.editSupAttendanceId = null;
+  saveSupervisorAttendance();
+  const s = (config && config.supervisors) ? config.supervisors.find(x=>x.id===rec.supervisorId) : null;
+  logActivity(`${state.session.name} عدّل سجل حضور المشرف ${s?s.name:'؟'} ليوم ${rec.date}`);
+  showToast('تم حفظ تعديل حضور المشرف بنجاح', 'success');
+  render();
+}
+
+function deleteSupAttendanceRec(id){
+  const rec = supervisorAttendance.find(a=>a.id===id);
+  const s = (rec && config && config.supervisors) ? config.supervisors.find(x=>x.id===rec.supervisorId) : null;
+  supervisorAttendance = supervisorAttendance.filter(a=>a.id!==id);
+  state.confirmDeleteId = null;
+  saveSupervisorAttendance();
+  if(rec) logActivity(`${state.session.name} حذف سجل حضور المشرف ${s?s.name:'؟'} ليوم ${rec.date}`);
+  showToast('تم حذف سجل حضور المشرف', 'info');
   render();
 }
 
