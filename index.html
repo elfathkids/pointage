@@ -317,6 +317,90 @@
     .card { border: 1px solid #000 !important; box-shadow: none !important; page-break-inside: avoid; }
     .stamp { opacity: 1 !important; }
   }
+
+  /* Quick Login & 1-Tap Checkin Styles */
+  .quick-user-box {
+    background: var(--paper-subtle); border: 2px dashed var(--brass); border-radius: var(--radius-lg);
+    padding: 22px 18px; text-align: center; margin-bottom: 16px; position: relative;
+  }
+  .quick-avatar {
+    width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--brass) 0%, var(--brass-light) 100%);
+    color: #fff; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 10px;
+    box-shadow: 0 4px 12px rgba(168,121,25,0.35);
+  }
+  
+  .hero-checkin-card {
+    background: var(--paper-card); border-radius: var(--radius-lg); padding: 24px 18px; text-align: center;
+    border: 1.5px solid var(--line); box-shadow: var(--shadow-md); margin-bottom: 18px; position: relative;
+    overflow: hidden;
+  }
+  .hero-clock-display {
+    font-family: 'Markazi Text', serif; font-size: 54px; font-weight: 800; color: var(--ink);
+    letter-spacing: 2px; line-height: 1.1; margin: 6px 0;
+  }
+  .hero-date-badge {
+    display: inline-block; background: var(--paper-subtle); color: var(--ink-soft); font-size: 13px; font-weight: 700;
+    padding: 4px 14px; border-radius: 20px; border: 1px solid var(--line);
+  }
+  .shift-indicator-badge {
+    margin: 10px auto 14px; display: inline-flex; align-items: center; gap: 6px;
+    background: var(--amber-bg); color: var(--brass); border: 1px solid var(--amber-border);
+    padding: 6px 18px; border-radius: 30px; font-weight: 800; font-size: 14.5px;
+  }
+  
+  /* Large 1-Tap Action Buttons */
+  .btn-hero-in {
+    width: 100%; max-width: 380px; margin: 12px auto; padding: 18px 24px;
+    background: linear-gradient(135deg, #15803D 0%, #166534 100%); color: #fff;
+    border: none; border-radius: var(--radius-lg); font-family: 'Cairo', sans-serif;
+    font-size: 18px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px; box-shadow: 0 8px 20px rgba(21,128,61,0.35);
+    transition: all 0.2s ease; position: relative;
+  }
+  .btn-hero-in:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #15803D 100%);
+    transform: translateY(-2px); box-shadow: 0 10px 24px rgba(21,128,61,0.45);
+  }
+  .btn-hero-in:active { transform: scale(0.97); }
+  .btn-hero-in .btn-sub { font-size: 13px; font-weight: 600; opacity: 0.9; }
+
+  .btn-hero-out {
+    width: 100%; max-width: 380px; margin: 12px auto; padding: 16px 24px;
+    background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%); color: #fff;
+    border: none; border-radius: var(--radius-lg); font-family: 'Cairo', sans-serif;
+    font-size: 17px; font-weight: 800; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px; box-shadow: 0 8px 20px rgba(185,28,28,0.35);
+    transition: all 0.2s ease;
+  }
+  .btn-hero-out:hover {
+    background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+    transform: translateY(-2px); box-shadow: 0 10px 24px rgba(185,28,28,0.45);
+  }
+  .btn-hero-out:active { transform: scale(0.97); }
+  .btn-hero-out .btn-sub { font-size: 12.5px; font-weight: 600; opacity: 0.9; }
+
+  /* PWA banner */
+  .pwa-banner {
+    background: linear-gradient(135deg, #243447 0%, #1A2634 100%); color: #fff;
+    padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    box-shadow: var(--shadow-sm); border: 1px solid rgba(255,255,255,0.1);
+  }
+  .pwa-banner-text { font-size: 13px; font-weight: 600; line-height: 1.3; }
+
+  /* Quick Duty Chips */
+  .duty-chip-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px;
+  }
+  .duty-chip {
+    padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-md);
+    background: var(--paper-subtle); cursor: pointer; font-size: 13px; font-weight: 700;
+    text-align: center; transition: var(--transition); user-select: none;
+  }
+  .duty-chip.active {
+    background: var(--forest-bg); border-color: var(--forest); color: var(--forest);
+    box-shadow: 0 2px 6px rgba(21,128,61,0.15);
+  }
 </style>
 </head>
 <body>
@@ -474,7 +558,14 @@ async function loadAll(){
   try{ supervisorAttendance = (await fbGet(KEYS.supAttendance)) || []; }catch(e){ supervisorAttendance=[]; }
   try{ notifications = (await fbGet(KEYS.notifications)) || []; }catch(e){ notifications=[]; }
   state.month = curMonth();
-  state.screen = config ? 'login' : 'setup';
+  if(!config){
+    state.screen = 'setup';
+  } else {
+    const autoOk = tryAutoLogin();
+    if(!autoOk){
+      state.screen = 'login';
+    }
+  }
   render();
 }
 async function persist(key, value){
@@ -1835,26 +1926,87 @@ function doSetup(){
   saveConfig(); state.screen='login'; showToast('تم تجهيز المحل بنجاح', 'success'); render();
 }
 
-/* ================= LOGIN ================= */
+/* ================= LOGIN & FAST REMEMBER ================= */
+function getSavedWorkerId(){
+  try { return localStorage.getItem(`alFath_savedWorker_${state.shopId}`) || ''; } catch(e){ return ''; }
+}
+function setSavedWorkerId(id){
+  try {
+    if(id) localStorage.setItem(`alFath_savedWorker_${state.shopId}`, id);
+    else localStorage.removeItem(`alFath_savedWorker_${state.shopId}`);
+  } catch(e){}
+}
+function clearSavedWorker(){
+  setSavedWorkerId('');
+  try { localStorage.removeItem(`alFath_autoSession_${state.shopId}`); }catch(e){}
+  render();
+}
+
+function tryAutoLogin(){
+  try {
+    const raw = localStorage.getItem(`alFath_autoSession_${state.shopId}`);
+    if(raw){
+      const saved = JSON.parse(raw);
+      if(saved && saved.workerId && saved.pin){
+        const w = workers.find(x=>x.id===saved.workerId);
+        if(w && w.pin === saved.pin){
+          doLoginWorker(w.id, w.pin, true);
+          return true;
+        }
+      }
+    }
+  }catch(e){}
+  return false;
+}
+
 function viewLogin(){
-  const role = state.loginRole || 'owner';
+  const role = state.loginRole || 'worker';
   let body='';
   if(role==='owner'){
-    body = `<label>رمز دخول صاحب المحل</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6">
-      <button class="btn btn-brass" style="width:100%" onclick="doLoginOwner()">دخول للنظام</button>`;
+    body = `<label>رمز دخول صاحب المحل</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6" autofocus onkeydown="if(event.key==='Enter') doLoginOwner()">
+      <button class="btn btn-brass" style="width:100%; margin-top:8px;" onclick="doLoginOwner()">دخول للنظام</button>`;
   } else if(role==='supervisor'){
     if(!config.supervisors.length){ body = `<p class="empty">لا يوجد مشرفون مسجلون بعد. يجب على صاحب المحل إضافتهم أولاً.</p>`; }
     else {
       body = `<label>اختر اسمك</label><select id="lg-sup">${config.supervisors.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
-      <label>رمز الدخول</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6">
-      <button class="btn btn-brass" style="width:100%" onclick="doLoginSupervisor()">دخول المسؤول</button>`;
+      <label>رمز الدخول</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6" onkeydown="if(event.key==='Enter') doLoginSupervisor()">
+      <button class="btn btn-brass" style="width:100%; margin-top:8px;" onclick="doLoginSupervisor()">دخول المسؤول</button>`;
     }
   } else {
-    if(!workers.length){ body = `<p class="empty">لا يوجد متعاونين بعد. يجب على صاحب المحل إضافتهم أولاً.</p>`; }
-    else {
-      body = `<label>اختر اسمك</label><select id="lg-w">${workers.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('')}</select>
-      <label>رمز الدخول</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6">
-      <button class="btn btn-brass" style="width:100%" onclick="doLoginWorker()">دخول المتعاون</button>`;
+    if(!workers.length){
+      body = `<p class="empty">لا يوجد متعاونين بعد. يجب على صاحب المحل إضافتهم أولاً.</p>`;
+    } else {
+      const savedId = getSavedWorkerId();
+      const savedWorker = savedId ? workers.find(w=>w.id===savedId) : null;
+
+      if(savedWorker){
+        body = `
+          <div class="quick-user-box">
+            <div class="quick-avatar">👤</div>
+            <div style="font-weight:800; font-size:18px; color:var(--ink);">${esc(savedWorker.name)}</div>
+            <div class="muted" style="font-size:12.5px; margin:4px 0 14px;">أدخل رمزك السري للدخول الفوري بضغطة زر</div>
+            <input id="lg-pin" type="password" placeholder="••••" maxlength="6" autofocus style="text-align:center; font-size:22px; letter-spacing:4px; margin-bottom:12px;" onkeydown="if(event.key==='Enter') doLoginWorker('${savedWorker.id}', document.getElementById('lg-pin').value)">
+            <label style="display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; font-size:13px; font-weight:600; margin-bottom:14px;">
+              <input type="checkbox" id="chk-auto-login" checked style="width:auto; margin:0;">
+              <span>تذكرني على هذا الهاتف (دخول تلقائي دائم)</span>
+            </label>
+            <button class="btn btn-brass" style="width:100%; padding:12px; font-size:16px;" onclick="doLoginWorker('${savedWorker.id}', document.getElementById('lg-pin').value)">⚡ دخول مباشر</button>
+            <div style="margin-top:14px;">
+              <button class="btn btn-outline btn-sm" onclick="clearSavedWorker()">تبديل الحساب أو اختيار اسم آخر</button>
+            </div>
+          </div>
+        `;
+      } else {
+        body = `
+          <label>اختر اسمك</label><select id="lg-w">${workers.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('')}</select>
+          <label>رمز الدخول</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6" onkeydown="if(event.key==='Enter') doLoginWorker()">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px; font-weight:600; margin:10px 0 14px;">
+            <input type="checkbox" id="chk-auto-login" checked style="width:auto; margin:0;">
+            <span>تذكرني على هذا الهاتف (دخول فوري تلقائي)</span>
+          </label>
+          <button class="btn btn-brass" style="width:100%; padding:12px;" onclick="doLoginWorker()">دخول المتعاون</button>
+        `;
+      }
     }
   }
   return `<div class="login-wrap">
@@ -1869,9 +2021,9 @@ function viewLogin(){
       </div>
     </div>
     <div class="role-tabs">
-      <button class="tab ${role==='owner'?'active':''}" onclick="setLoginRole('owner')">صاحب المحل</button>
-      <button class="tab ${role==='supervisor'?'active':''}" onclick="setLoginRole('supervisor')">مسؤول</button>
       <button class="tab ${role==='worker'?'active':''}" onclick="setLoginRole('worker')">متعاون</button>
+      <button class="tab ${role==='supervisor'?'active':''}" onclick="setLoginRole('supervisor')">مسؤول</button>
+      <button class="tab ${role==='owner'?'active':''}" onclick="setLoginRole('owner')">صاحب المحل</button>
     </div>
     <div class="card">${body}</div>
   </div>`;
@@ -1879,17 +2031,20 @@ function viewLogin(){
 function setLoginRole(r){ state.loginRole=r; render(); }
 function doLoginOwner(){
   const pin=document.getElementById('lg-pin').value.trim();
-  if(pin===config.ownerPin){ state.session={role:'owner', name:'صاحب المحل'}; state.screen='owner'; state.tab='overview'; showToast('مرحباً بك مجدداً يا صاحب المحل', 'success'); render(); }
+  if(pin===config.ownerPin){ state.session={role:'owner', name:'صاحب المحل'}; state.screen='owner'; state.tab='today'; showToast('مرحباً بك مجدداً يا صاحب المحل', 'success'); render(); }
   else showToast('رمز الدخول خاطئ', 'error');
 }
 function doLoginSupervisor(){
   const id=document.getElementById('lg-sup').value, pin=document.getElementById('lg-pin').value.trim();
   const s=config.supervisors.find(x=>x.id===id);
-  if(s&&pin===s.pin){ state.session={role:'supervisor', id:s.id, name:s.name}; state.screen='supervisor'; state.tab='selfcheckin'; showToast(`أهلاً بك ${s.name}`, 'success'); render(); }
+  if(s&&pin===s.pin){ state.session={role:'supervisor', id:s.id, name:s.name}; state.screen='supervisor'; state.tab='today'; showToast(`أهلاً بك ${s.name}`, 'success'); render(); }
   else showToast('رمز الدخول خاطئ', 'error');
 }
-async function doLoginWorker(){
-  const id=document.getElementById('lg-w').value, pin=document.getElementById('lg-pin').value.trim();
+async function doLoginWorker(targetId, targetPin, isAuto){
+  const id = targetId || (document.getElementById('lg-w') && document.getElementById('lg-w').value);
+  const pin = targetPin || (document.getElementById('lg-pin') && document.getElementById('lg-pin').value.trim());
+  if(!id || !pin){ showToast('يرجى إدخال رمز الدخول', 'warning'); return; }
+  
   const w=workers.find(x=>x.id===id);
   if(!(w&&pin===w.pin)){ showToast('رمز الدخول خاطئ', 'error'); return; }
 
@@ -1909,11 +2064,24 @@ async function doLoginWorker(){
     if(!ok2){ try{ await fbSet(KEYS.workers, freshWorkers); }catch(e2){} }
   }
   workers = freshWorkers;
+  
+  // حفظ الحساب للدخول السريع والدخول التلقائي
+  setSavedWorkerId(w.id);
+  const autoChk = document.getElementById('chk-auto-login');
+  if(!isAuto && autoChk && autoChk.checked){
+    try { localStorage.setItem(`alFath_autoSession_${state.shopId}`, JSON.stringify({ workerId: w.id, pin: w.pin })); }catch(e){}
+  }
+
   state.session={role:'worker', id:w.id, name:w.name}; state.screen='worker'; state.tab='checkin';
-  showToast(`أهلاً بك ${w.name}`, 'success');
+  showToast(`أهلاً بك يا ${w.name} ✨`, 'success');
   render();
 }
-function logout(){ state.session=null; state.loginRole=null; state.screen='login'; state.detailWorkerId=null; showToast('تم تسجيل الخروج', 'info'); render(); }
+function logout(){
+  try { localStorage.removeItem(`alFath_autoSession_${state.shopId}`); }catch(e){}
+  state.session=null; state.loginRole=null; state.screen='login'; state.detailWorkerId=null;
+  showToast('تم تسجيل الخروج', 'info');
+  render();
+}
 function backToShopSelect(){ state.shopId=null; state.session=null; state.loginRole=null; state.screen='shopselect'; state.shopAdminOpen=false; state.shopAdminAuthed=false; render(); }
 async function copyShopLink(){
   const url = new URL(window.location.href);
@@ -3240,64 +3408,156 @@ function dutyRespText(entry){
 
 function workerCheckin(){
   const todays = attendance.filter(a=>a.workerId===state.session.id && a.date===todayStr());
-  const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px;">🔒 التسجيل مشروط بالاتصال بشبكة واي فاي المحل</p>` : '';
-  const shiftBlocks = ['صباحي','مسائي'].map(shift=>{
-    const rec = todays.find(a=>a.shift===shift);
-    let action;
-    if(!rec) action = `<button class="btn btn-brass" style="width:100%; padding:14px; font-size:16px;" onclick="selfIn('${shift}')">تسجيل حضور الفوج ${shift}</button>${netNote}`;
-    else if(!rec.checkOut) action = `<div class="muted" style="margin-bottom:10px;">حضرت الساعة <b>${rec.checkIn}</b></div><button class="btn btn-outline" style="width:100%; padding:12px; font-size:15px;" onclick="selfOut('${shift}')">تسجيل انصراف الفوج ${shift}</button>${netNote}`;
-    else {
-      const mins = toMinutes(nowTime()) - toMinutes(rec.checkOut);
-      const canUndo = mins!=null && mins>=0 && mins<=15;
-      action = `<div class="badge badge-present" style="font-size:14px; padding:8px 14px; margin-bottom:8px;">✓ تم: حضور ${rec.checkIn} — انصراف ${rec.checkOut}</div>
-        ${canUndo?`<br><button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="undoCheckout('${shift}')">سجّلت الانصراف بالخطأ؟ تراجع خلال 15 دقيقة</button>`
-                  :`<p class="muted" style="margin-top:6px;">إذا سجلت الانصراف بالخطأ، اطلب من المسؤول تعديل سجلك.</p>`}`;
-    }
-    let dutyCard = '';
-    if(rec && rec.checkIn){
-      const duty = getTodayDuty(state.session.id, shift);
-      if(duty){
-        dutyCard = `<div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);">
-          <b>📋 مسؤولياتك المحددة:</b> <span class="muted">${esc(dutyRespText(duty) || 'لم تحدد أي مسؤولية')}</span>
-          <button class="btn btn-outline btn-sm" style="margin-right:8px;" onclick="editDuty('${shift}')">تعديل</button>
-        </div>`;
-      } else {
-        dutyCard = `<div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);">
-          <b>📋 حدد مسؤولياتك لهذا الفوج:</b>
-          <div style="margin-top:8px;">
-            ${DUTY_ITEMS.map(([key,label])=>`
-            <div style="margin-bottom:8px;">
-              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-                <input type="checkbox" id="duty-${key}-${shift}" style="width:auto; margin:0;">
-                <span>${label}</span>
-              </label>
-              <input id="duty-note-${key}-${shift}" placeholder="ملاحظة حول ${label} (اختياري)" style="margin-top:4px; margin-bottom:4px; font-size:13px;">
-            </div>`).join('')}
-            <button class="btn btn-brass btn-sm" style="margin-top:6px;" onclick="saveDuty('${shift}')">حفظ المسؤوليات</button>
+  const now = nowTime();
+  const splitTime = config.shiftSplitTime || '14:30';
+  const autoShift = (now < splitTime) ? 'صباحي' : 'مسائي';
+  const selectedShift = state.workerSelectedShift || autoShift;
+  
+  const rec = todays.find(a=>a.shift===selectedShift);
+  const otherShift = selectedShift==='صباحي' ? 'مسائي' : 'صباحي';
+  const otherRec = todays.find(a=>a.shift===otherShift);
+
+  const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px; font-size:12.5px;">🔒 التسجيل مشروط بالاتصال بشبكة واي فاي المحل</p>` : '';
+
+  // 1. شريط تثبيت التطبيق على الشاشة الرئيسية (PWA)
+  const pwaBanner = `
+    <div class="pwa-banner">
+      <div class="pwa-banner-text">
+        📲 <b>تثبيت التطبيق على شاشة هاتفك:</b>
+        <div style="font-size:12px; opacity:0.9; margin-top:2px;">اضغط خيارات المتصفح (⋮) ثم «إضافة إلى الشاشة الرئيسية» للدخول بلمسة واحدة كل يوم.</div>
+      </div>
+    </div>
+  `;
+
+  // 2. زر الإجراء الرئيسي بضغطة واحدة (Hero 1-Tap Action)
+  let heroAction = '';
+  if(!rec){
+    heroAction = `
+      <div class="hero-checkin-card">
+        <div class="hero-date-badge">${todayStr()}</div>
+        <div class="hero-clock-display clock">${now}</div>
+        <div class="shift-indicator-badge">
+          <span>🕒 توقيت العمل الحالي: <b>الفوج ${selectedShift}</b></span>
+        </div>
+        <button class="btn-hero-in" onclick="oneTapSelfIn('${selectedShift}')">
+          <span style="font-size:24px;">🟢</span>
+          <span>تسجيل حضوري الآن</span>
+          <span class="btn-sub">بصمة الفوج ${selectedShift} بضغطة واحدة</span>
+        </button>
+        ${netNote}
+      </div>
+    `;
+  } else if(!rec.checkOut){
+    const isLate = isLateRecord(rec);
+    heroAction = `
+      <div class="hero-checkin-card" style="border-top:4px solid var(--forest);">
+        <div class="hero-date-badge">${todayStr()}</div>
+        <div class="hero-clock-display clock">${now}</div>
+        <div style="margin:10px 0;">
+          <span class="badge badge-present" style="font-size:15px; padding:6px 18px;">
+            ✓ حاضر منذ الساعة <b>${rec.checkIn}</b> (${selectedShift}) ${isLate?'⚠️ متأخر':''}
+          </span>
+        </div>
+        <button class="btn-hero-out" onclick="oneTapSelfOut('${selectedShift}')">
+          <span style="font-size:24px;">🔴</span>
+          <span>تسجيل انصرافي الآن</span>
+          <span class="btn-sub">إنهاء دوام الفوج ${selectedShift}</span>
+        </button>
+        ${netNote}
+      </div>
+    `;
+  } else {
+    const mins = toMinutes(now) - toMinutes(rec.checkOut);
+    const canUndo = mins!=null && mins>=0 && mins<=15;
+    heroAction = `
+      <div class="hero-checkin-card" style="border-top:4px solid var(--brass);">
+        <div class="hero-date-badge">${todayStr()}</div>
+        <div class="hero-clock-display clock">${now}</div>
+        <div style="margin:12px 0;">
+          <div class="badge badge-present" style="font-size:15px; padding:8px 18px;">
+            ✓ تم تسجيل دوام الفوج ${selectedShift}: حضور ${rec.checkIn} — انصراف ${rec.checkOut}
           </div>
-        </div>`;
-      }
-    }
-    return `<div class="card" style="border-top:3px solid var(--brass);"><h3>الفوج ${shift}</h3>${action}${dutyCard}</div>`;
-  }).join('');
-  return `<div class="card worker-checkin-box"><div class="muted">${todayStr()}</div><div class="clock">${nowTime()}</div></div>${shiftBlocks}`;
+        </div>
+        ${canUndo ? `
+          <button class="btn btn-outline btn-sm" style="margin-top:4px;" onclick="undoCheckout('${selectedShift}')">
+            سجّلت الانصراف بالخطأ؟ تراجع خلال 15 دقيقة
+          </button>
+        ` : `<p class="muted" style="margin-top:6px; font-size:12.5px;">إذا سجلت الانصراف بالخطأ وتريد المتابعة، اطلب من المسؤول تعديل سجلك.</p>`}
+      </div>
+    `;
+  }
+
+  // 3. التبديل بين الأفواج في حال العمل المزدوج
+  const shiftSwitcher = `
+    <div style="display:flex; justify-content:center; gap:8px; margin-bottom:16px;">
+      <button class="tab ${selectedShift==='صباحي'?'active':''}" onclick="state.workerSelectedShift='صباحي'; render();">
+        الفوج الصباحي ${todays.some(a=>a.shift==='صباحي')?'✓':''}
+      </button>
+      <button class="tab ${selectedShift==='مسائي'?'active':''}" onclick="state.workerSelectedShift='مسائي'; render();">
+        الفوج المسائي ${todays.some(a=>a.shift==='مسائي')?'✓':''}
+      </button>
+    </div>
+  `;
+
+  // 4. بطاقة المسؤوليات والمهام اليومية السريعة بنقرة واحدة
+  let dutySection = '';
+  if(rec && rec.checkIn){
+    const duty = getTodayDuty(state.session.id, selectedShift);
+    const checkedItems = (duty && duty.responsibilities) ? duty.responsibilities : [];
+    dutySection = `
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header" style="margin-bottom:10px; padding-bottom:8px;">
+          <h3 style="margin:0; font-size:17px;">📋 إنجازات ومسؤوليات اليوم (${selectedShift})</h3>
+          <span class="muted" style="font-size:12px;">انقر لتأكيد إنجاز المهمة مباشرة</span>
+        </div>
+        <div class="duty-chip-grid">
+          ${DUTY_ITEMS.map(([key, label])=>{
+            const isDone = checkedItems.includes(label);
+            return `
+              <div class="duty-chip ${isDone?'active':''}" onclick="toggleQuickDuty('${selectedShift}', '${label}')">
+                ${isDone ? '✓ ' : '+ '} ${label}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    ${pwaBanner}
+    ${shiftSwitcher}
+    ${heroAction}
+    ${dutySection}
+  `;
 }
 
-function saveDuty(shift){
-  const resp = [];
-  const notes = {};
-  DUTY_ITEMS.forEach(([key,label])=>{
-    if(document.getElementById(`duty-${key}-${shift}`).checked){
-      resp.push(label);
-      const noteVal = document.getElementById(`duty-note-${key}-${shift}`).value.trim();
-      if(noteVal) notes[label] = noteVal;
+async function oneTapSelfIn(shift){
+  if(navigator.vibrate) try{ navigator.vibrate([40, 60, 40]); }catch(e){}
+  await selfIn(shift);
+}
+
+async function oneTapSelfOut(shift){
+  if(navigator.vibrate) try{ navigator.vibrate([40, 60, 40]); }catch(e){}
+  await selfOut(shift);
+}
+
+function toggleQuickDuty(shift, label){
+  let duty = dutyLog.find(d=>d.workerId===state.session.id && d.date===todayStr() && d.shift===shift);
+  if(!duty){
+    duty = { id:uid(), workerId:state.session.id, date:todayStr(), shift, responsibilities:[label], respNotes:{} };
+    dutyLog.push(duty);
+  } else {
+    duty.responsibilities = duty.responsibilities || [];
+    if(duty.responsibilities.includes(label)){
+      duty.responsibilities = duty.responsibilities.filter(x=>x!==label);
+    } else {
+      duty.responsibilities.push(label);
     }
-  });
-  dutyLog.push({ id:uid(), workerId:state.session.id, date:todayStr(), shift, responsibilities:resp, respNotes:notes });
+  }
   saveDutyLog();
-  const summary = resp.map(r=> notes[r]?`${r} (${notes[r]})`:r).join('، ');
-  logActivity(`${state.session.name} حدّد مسؤولياته (فوج ${shift}): ${summary||'لا شي'}`);
-  showToast('تم حفظ مسؤولياتك اليومية 👍', 'success');
+  if(navigator.vibrate) try{ navigator.vibrate(30); }catch(e){}
+  showToast(`تم تحديث قائمة المهام: ${label}`, 'success', 2000);
   render();
 }
 
@@ -3346,7 +3606,7 @@ async function selfIn(shift){
       shift, action: 'حضور', late: isLateRecord({checkIn: inTime, shift}) ? 'متأخر' : 'في الوقت',
       mapLink: geo ? mapLink(geo.lat, geo.lng) : ''
     });
-    showToast('تم تسجيل حضورك بنجاح ✅', 'success');
+    showToast(`تم تسجيل حضورك بنجاح الساعة ${inTime} ✨ يوم موفق يا ${state.session.name}!`, 'success');
     render();
   } finally { checkinBusy = false; }
 }
@@ -3371,7 +3631,7 @@ async function selfOut(shift){
       shift, action: 'انصراف', late: '—',
       mapLink: geo ? mapLink(geo.lat, geo.lng) : ''
     });
-    showToast('تم تسجيل انصرافك بنجاح ✅', 'info');
+    showToast(`تم تسجيل انصرافك بنجاح الساعة ${outTime} ✅ بارك الله في عملك!`, 'info');
     render();
   } finally { checkinBusy = false; }
 }
@@ -3396,8 +3656,10 @@ function undoCheckout(shift){
 function workerMine(){
   const wId = state.session.id;
   const paid = isPaid(wId, state.month);
+  const wage = calcWage(wId, state.month);
   const myAtt = attendance.filter(a=>a.workerId===wId && a.date.slice(0,7)===state.month)
     .sort((a,b)=> b.date.localeCompare(a.date));
+  
   const attRows = myAtt.map(r=>{
     const lateTag = isLateRecord(r) ? `<span class="badge badge-absent">متأخر</span>` : '<span class="badge badge-present">في الوقت</span>';
     return `<div class="list-item">
@@ -3407,7 +3669,28 @@ function workerMine(){
     </div>`;
   }).join('');
 
+  const earningsKpi = wage ? `
+    <div class="stats-grid">
+      <div class="stat-card forest">
+        <span class="stat-title">صافي الأجرة المحققة (${state.month})</span>
+        <span class="stat-val amt">${fmt(wage.netPayout)} دج</span>
+        <span class="stat-sub">${paid ? '✓ تم دفع الراتب' : '⏳ قيد الاستحقاق'}</span>
+      </div>
+      <div class="stat-card brass">
+        <span class="stat-title">أيام الحضور والانضباط</span>
+        <span class="stat-val">${wage.present} / ${config.expectedMonthDays||30} يوم</span>
+        <span class="stat-sub">${wage.absentNet > 0 ? `خصم ${wage.absentNet} يوم غياب` : 'انضباط كامل 👍'}</span>
+      </div>
+      <div class="stat-card ink">
+        <span class="stat-title">نقاط التقييم الشهري</span>
+        <span class="stat-val">${wage.evalTotal} / 100</span>
+        <span class="stat-sub">مكافأة التقييم: +${fmt(wage.evalBonus)} دج</span>
+      </div>
+    </div>
+  ` : '';
+
   return `${paydayBanner()}${lateWarningBanner(state.month, wId)}
+  ${earningsKpi}
   <div class="card">
     <div class="card-header">
       <h2>سجل أجرتي وتقييمي</h2>
