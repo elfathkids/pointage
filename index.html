@@ -567,29 +567,53 @@ function lateWarningBanner(month, onlyWorkerId){
 function calcWage(workerId, month){
   const w = workers.find(x=>x.id===workerId);
   if(!w) return null;
-  const present = presentDaysCount(workerId, month);
+  const autoPresent = presentDaysCount(workerId, month);
+  const rec = getMonthlyRecord(workerId, month);
   const N = config.expectedMonthDays || 30;
+  
+  // 1. أيام الحضور المعتمدة (تلقائياً من الحضور اليومي أو مخصصة بالتقييم)
+  const present = (rec.customPresentDays != null && rec.customPresentDays !== '') 
+    ? Number(rec.customPresentDays) 
+    : autoPresent;
+    
+  // 2. أيام الغياب الفعلي
+  const autoAbsence = (rec.customAbsenceDays != null && rec.customAbsenceDays !== '')
+    ? Number(rec.customAbsenceDays)
+    : Math.max(N - present, 0);
+
+  const excusedAbsence = Math.min(Number(rec.excusedAbsence||0), autoAbsence);
+  const paidLeaveDays = Math.min(Number(rec.paidLeaveDays||0), Math.max(autoAbsence - excusedAbsence, 0));
+  const lateCount = lateCountForMonth(workerId, month);
+  const lateAbsenceDays = Math.floor(lateCount / (config.lateCountForAbsence||5));
+  
+  // 3. صافي أيام الغياب المخصومة من الراتب (الغياب الفعلي - المبرر - العطلة المدفوعة + خصم التأخيرات)
+  const absence = Math.max(autoAbsence - excusedAbsence - paidLeaveDays + lateAbsenceDays, 0);
+  
   const baseSalary = w.baseSalary!=null ? w.baseSalary : config.baseSalary;
   const evalBonusPool = w.evalBonusPool!=null ? w.evalBonusPool : config.evalBonusPool;
   const liveRate = w.liveRate!=null ? w.liveRate : config.liveRate;
-  const rec = getMonthlyRecord(workerId, month);
-  const autoAbsence = Math.max(N - present, 0);
-  const excusedAbsence = Math.min(Number(rec.excusedAbsence||0), autoAbsence);
-  const paidLeaveDays = Math.min(Number(rec.paidLeaveDays||0), Math.max(autoAbsence-excusedAbsence,0));
-  const lateCount = lateCountForMonth(workerId, month);
-  const lateAbsenceDays = Math.floor(lateCount / (config.lateCountForAbsence||5));
-  const absence = Math.max(autoAbsence - excusedAbsence - paidLeaveDays + lateAbsenceDays, 0);
   const dayRate = baseSalary / N;
-  const grossSalary = baseSalary + (Number(rec.extraDays||0) - absence) * dayRate;
-  const evalPoolWorked = (evalBonusPool / N) * (N - absence);
+  
+  // الراتب الخام = الراتب الأساسي + (الأيام الإضافية - أيام الغياب المخصومة) × سعر اليوم
+  const grossSalary = Math.max(0, baseSalary + (Number(rec.extraDays||0) - absence) * dayRate);
+  
+  // مكافأة التقييم = (حصة التقييم حسب الأيام غير المخصومة) × (مجموع النقاط / 100)
+  const evalPoolWorked = (evalBonusPool / N) * Math.max(0, N - absence);
   const evalTotal = Number(rec.salesScore||0) + Number(rec.mediaScore||0);
   const bonus = evalPoolWorked * (evalTotal/100);
+  
   const livePay = Number(rec.liveCount||0) * liveRate;
   const overtimePay = (dayRate / (config.workdayHours||6.5)) * Number(rec.overtimeHours||0);
   const transport = Number(rec.transport||0);
   const total = grossSalary + bonus + livePay + overtimePay + transport;
   const rounded = Math.round(total/100)*100;
-  return { w, present, expected:N, autoAbsence, excusedAbsence, paidLeaveDays, lateCount, lateAbsenceDays, absence, rec, baseSalary, evalBonusPool, liveRate, dayRate, grossSalary, evalPoolWorked, evalTotal, bonus, livePay, overtimePay, transport, total, rounded };
+  
+  return { 
+    w, present, autoPresent, expected:N, autoAbsence, excusedAbsence, paidLeaveDays, 
+    lateCount, lateAbsenceDays, absence, rec, baseSalary, evalBonusPool, liveRate, 
+    dayRate, grossSalary, evalPoolWorked, evalTotal, bonus, livePay, overtimePay, 
+    transport, total, rounded 
+  };
 }
 function isPaid(workerId, month){ return !!payments.find(p=>p.workerId===workerId && p.month===month && p.paid); }
 
@@ -673,10 +697,10 @@ function exportWagesExcel(month){
     [`الشهر: ${month}`, `تاريخ الاستخراج: ${todayStr()}`],
     [],
     [
-      'المتعاون', 'الراتب الأساسي (دج)', 'أيام الحضور', 'الغياب المحتسب', 'مرات التأخر',
+      'المتعاون', 'الراتب الأساسي (دج)', 'أيام الحضور (يوم)', 'أيام الشهر', 'أيام الغياب المحتسبة (يوم)', 'مرات التأخر',
       'الأيام الإضافية', 'نقاط المبيعات (/50)', 'نقاط الميديا (/50)', 'إجمالي التقييم (/100)',
       'مكافأة التقييم (دج)', 'مستحقات اللايف (دج)', 'الساعات الإضافية (دج)', 'منحة النقل (دج)',
-      'الراتب الإجمالي المقرب (دج)', 'حالة الصرف'
+      'الراتب الخام (دج)', 'الراتب الصافي المقرب (دج)', 'حالة الصرف'
     ]
   ];
 
@@ -686,21 +710,21 @@ function exportWagesExcel(month){
     const paid = isPaid(w.id, month);
     totalPayout += c.rounded;
     data.push([
-      c.w.name, c.baseSalary, `${c.present}/${c.expected}`, c.absence, c.lateCount,
+      c.w.name, c.baseSalary, c.present, c.expected, c.absence, c.lateCount,
       c.rec.extraDays || 0, c.rec.salesScore || 0, c.rec.mediaScore || 0, c.evalTotal,
       Math.round(c.bonus), Math.round(c.livePay), Math.round(c.overtimePay), c.transport,
-      c.rounded, paid ? 'مصروف' : 'غير مصروف'
+      Math.round(c.grossSalary), c.rounded, paid ? 'مصروف' : 'غير مصروف'
     ]);
   });
 
   data.push([]);
-  data.push(['المجموع الإجمالي للأجور', '', '', '', '', '', '', '', '', '', '', '', '', totalPayout, '']);
+  data.push(['المجموع الإجمالي للأجور', '', '', '', '', '', '', '', '', '', '', '', '', '', '', totalPayout, '']);
 
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = [
-    { wch: 18 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+    { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 18 }, { wch: 12 },
     { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 16 },
-    { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 22 }, { wch: 14 }
+    { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 14 }
   ];
 
   const wb = XLSX.utils.book_new();
@@ -805,15 +829,16 @@ function printPayslip(workerId, month){
         <table class="table">
           <tr><td>اسم المتعاون:</td><td>${c.w.name}</td></tr>
           <tr><td>الراتب الأساسي المعتمد:</td><td>${fmt(c.baseSalary)} دج</td></tr>
-          <tr><td>أيام الحضور الفعلي:</td><td>${c.present} من ${c.expected} يوم</td></tr>
-          <tr><td>أيام الغياب المحتسبة (مع التأخيرات):</td><td>${c.absence} يوم</td></tr>
-          <tr><td>الأيام الإضافية:</td><td>${c.rec.extraDays || 0} يوم</td></tr>
+          <tr><td>أيام الحضور الفعلي المعتمدة:</td><td><b>${c.present} يوم</b> (من أصل ${c.expected} يوم)</td></tr>
+          <tr><td>صافي أيام الغياب المخصومة:</td><td>${c.absence} يوم</td></tr>
+          <tr><td>الأيام الإضافية (عمل في الراحة):</td><td>${c.rec.extraDays || 0} يوم</td></tr>
+          <tr><td>الراتب الخام بعد احتساب الحضور والغياب:</td><td>${fmt(c.grossSalary)} دج</td></tr>
           <tr><td>تقييم الأداء (مبيعات + ميديا):</td><td>${c.evalTotal} / 100</td></tr>
           <tr><td>مكافأة التقييم المستحقة:</td><td>${fmt(c.bonus)} دج</td></tr>
           <tr><td>مستحقات البث المباشر (اللايف):</td><td>${fmt(c.livePay)} دج</td></tr>
           <tr><td>مستحقات الساعات الإضافية:</td><td>${fmt(c.overtimePay)} دج</td></tr>
           <tr><td>منحة النقل:</td><td>${fmt(c.transport)} دج</td></tr>
-          <tr class="total-row"><td>صافي الراتب المستحق (مقرّب):</td><td>${fmt(c.rounded)} دج</td></tr>
+          <tr class="total-row"><td>صافي الراتب المستحق النهائي (مقرّب):</td><td>${fmt(c.rounded)} دج</td></tr>
         </table>
         <div class="signatures">
           <div>توقيع صاحب المحل / الإدارة: _________</div>
@@ -1027,7 +1052,7 @@ async function exportAllShopsExcel(month){
         
         allRows.push([
           shopTitle, wName, c ? c.baseSalary : (w.baseSalary || config.baseSalary),
-          `${c ? c.present : 0}/${c ? c.expected : 30}`, c ? c.absence : 0, c ? c.lateCount : 0,
+          c ? c.present : 0, c ? c.expected : 30, c ? c.absence : 0, c ? c.lateCount : 0,
           (c && c.rec) ? (c.rec.extraDays || 0) : 0,
           (c && c.rec) ? (c.rec.salesScore || 0) : 0,
           (c && c.rec) ? (c.rec.mediaScore || 0) : 0,
@@ -1036,6 +1061,7 @@ async function exportAllShopsExcel(month){
           c ? Math.round(c.livePay) : 0,
           c ? Math.round(c.overtimePay) : 0,
           c ? c.transport : 0,
+          c ? Math.round(c.grossSalary) : 0,
           c ? c.rounded : 0,
           paid ? 'مصروف' : 'غير مصروف'
         ]);
@@ -1085,19 +1111,19 @@ async function exportAllShopsExcel(month){
     [`تاريخ التصدير: ${todayStr()}`],
     [],
     [
-      'المحل', 'اسم المتعاون', 'الراتب الأساسي', 'الحضور/الشهر', 'الغياب المحتسب', 'مرات التأخر',
-      'أيام إضافية', 'نقاط المبيعات', 'نقاط الميديا', 'مجموع التقييم', 'مكافأة التقييم',
-      'اللايف', 'الساعات الإضافية', 'منحة النقل', 'الراتب الصافي', 'حالة الصرف'
+      'المحل', 'اسم المتعاون', 'الراتب الأساسي (دج)', 'أيام الحضور (يوم)', 'أيام الشهر', 'أيام الغياب المحتسبة (يوم)', 'مرات التأخر',
+      'أيام إضافية', 'نقاط المبيعات (/50)', 'نقاط الميديا (/50)', 'مجموع التقييم (/100)', 'مكافأة التقييم (دج)',
+      'اللايف (دج)', 'الساعات الإضافية (دج)', 'منحة النقل (دج)', 'الراتب الخام (دج)', 'الراتب الصافي المقرب (دج)', 'حالة الصرف'
     ]
   ];
   allRows.forEach(r => detailedData.push(r));
   detailedData.push([]);
-  detailedData.push(['المجموع الكلي', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotalWages, '']);
+  detailedData.push(['المجموع الكلي', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotalWages, '']);
   const wsDetailed = XLSX.utils.aoa_to_sheet(detailedData);
   wsDetailed['!cols'] = [
-    { wch: 20 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 },
-    { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 12 },
-    { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 14 }
+    { wch: 20 }, { wch: 22 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 18 }, { wch: 12 },
+    { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 },
+    { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 14 }
   ];
   XLSX.utils.book_append_sheet(wb, wsDetailed, 'أجور_جميع_المحلات');
 
@@ -1932,7 +1958,8 @@ function wageTable(month, editable){
       : `<span class="badge ${paid?'badge-present':'badge-absent'}">${paid?'مصروف':'غير مصروف'}</span>`;
     return `<tr>
       <td><b>${esc(w.name)}</b></td>
-      <td><span class="badge ${c.absence===0?'badge-present':'badge-open'}">${c.present}/${c.expected}</span></td>
+      <td><span class="badge badge-present" style="font-weight:700;">${c.present} / ${c.expected} يوم</span></td>
+      <td><span class="badge ${c.absence>0?'badge-absent':'badge-present'}" style="font-weight:700;">${c.absence} يوم</span></td>
       <td>
         <div style="display:flex; align-items:center; gap:6px;">
           <span>${c.evalTotal}/100</span>
@@ -1946,7 +1973,7 @@ function wageTable(month, editable){
         <button class="btn btn-outline btn-sm" onclick="printPayslip('${w.id}','${month}')" title="طباعة وصل الراتب">🖨️ وصل</button>
       </td>
     </tr>
-    ${state.detailWorkerId===w.id ? `<tr><td colspan="6" style="padding:0;">${wageDetailCard(w.id, month, paid)}</td></tr>` : ''}`;
+    ${state.detailWorkerId===w.id ? `<tr><td colspan="7" style="padding:0;">${wageDetailCard(w.id, month, paid)}</td></tr>` : ''}`;
   }).join('');
   
   const grand = filteredWorkers.reduce((s,w)=>s+calcWage(w.id,month).rounded,0);
@@ -1967,9 +1994,19 @@ function wageTable(month, editable){
   </div>
   <div class="table-responsive">
     <table class="ledger">
-      <thead><tr><th>المتعاون</th><th>الحضور</th><th>التقييم</th><th>الإجمالي</th><th>الصرف</th><th>الإجراءات</th></tr></thead>
-      <tbody>${rows || `<tr><td colspan="6" class="empty">لا يوجد متعاونين مطابقين</td></tr>`}</tbody>
-      <tfoot><tr class="total-row"><td colspan="3">الإجمالي العام المستحق</td><td class="amt">${fmt(grand)} دج</td><td colspan="2"></td></tr></tfoot>
+      <thead>
+        <tr>
+          <th>المتعاون</th>
+          <th>أيام الحضور</th>
+          <th>أيام الغياب المحتسبة</th>
+          <th>التقييم</th>
+          <th>صافي الراتب</th>
+          <th>الصرف</th>
+          <th>الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="7" class="empty">لا يوجد متعاونين مطابقين</td></tr>`}</tbody>
+      <tfoot><tr class="total-row"><td colspan="4">الإجمالي العام المستحق</td><td class="amt">${fmt(grand)} دج</td><td colspan="2"></td></tr></tfoot>
     </table>
   </div>`;
 }
@@ -1988,16 +2025,16 @@ function wageDetailCard(workerId, month, paid){
     <div class="table-responsive">
       <table class="ledger">
         <tr><td>الراتب الأساسي المعتمد لهذا المتعاون</td><td class="amt">${fmt(c.baseSalary)} دج</td></tr>
-        <tr><td>أيام الحضور</td><td><b>${c.present}</b> من أصل ${c.expected} يوم</td></tr>
-        <tr><td>أيام الغياب الفعلي</td><td>${c.autoAbsence}</td></tr>
-        <tr><td>غياب مبرر (معتمد لا يُخصم)</td><td>${c.excusedAbsence}</td></tr>
-        <tr><td>عطلة مدفوعة الأجر</td><td>${c.paidLeaveDays}</td></tr>
+        <tr><td>أيام الحضور الفعلي المعتمدة</td><td><b class="pos">${c.present} يوم</b> من أصل ${c.expected} يوم</td></tr>
+        <tr><td>أيام الغياب الفعلي غير المبرر</td><td class="${c.autoAbsence>0?'neg':''}">${c.autoAbsence} يوم</td></tr>
+        <tr><td>غياب مبرر (معتمد لا يُخصم)</td><td>${c.excusedAbsence} يوم</td></tr>
+        <tr><td>عطلة مدفوعة الأجر (معتمدة)</td><td>${c.paidLeaveDays} يوم</td></tr>
         <tr><td>${Number(config.lateThresholdMinutes)===0?'عدد مرات التأخر (معطل)':`مرات التأخر (أكثر من ${config.lateThresholdMinutes ?? 10} د)`}</td><td class="${c.lateCount>0?'neg':''}">${c.lateCount}</td></tr>
         <tr><td>خصم أيام بسبب التأخر (كل ${config.lateCountForAbsence||5} تأخيرات = يوم)</td><td class="${c.lateAbsenceDays>0?'neg':''}">${c.lateAbsenceDays} يوم</td></tr>
-        <tr><td>إجمالي الغياب المحتسب في الأجرة</td><td class="${c.absence>0?'neg':''}">${c.absence} يوم</td></tr>
+        <tr style="background:var(--paper-subtle); font-weight:700;"><td>صافي أيام الغياب المخصومة من الراتب</td><td class="${c.absence>0?'neg':''}">${c.absence} يوم</td></tr>
         <tr><td>الأيام الإضافية (عمل في يوم الراحة)</td><td>${c.rec.extraDays||0} يوم</td></tr>
         <tr><td>سعر عمل اليوم الواحد</td><td>${fmt(c.dayRate)} دج</td></tr>
-        <tr><td>الراتب الخام (بعد تسوية الحضور)</td><td><b>${fmt(c.grossSalary)} دج</b></td></tr>
+        <tr><td>الراتب الخام (بعد تسوية الحضور والغياب)</td><td><b>${fmt(c.grossSalary)} دج</b></td></tr>
         <tr><td>نقاط المبيعات</td><td>${c.rec.salesScore||0} / 50</td></tr>
         <tr><td>نقاط الميديا وصناعة المحتوى</td><td>${c.rec.mediaScore||0} / 50</td></tr>
         <tr><td>مجموع التقييم العام</td><td><b>${c.evalTotal} / 100</b></td></tr>
@@ -2566,9 +2603,72 @@ async function supSelfOut(shift){
   } finally { supCheckinBusy = false; }
 }
 
+function todayDashboard(){
+  const today = todayStr();
+  const todaysAtt = attendance.filter(a => a.date === today);
+  const presentWorkerIds = new Set(todaysAtt.filter(a => a.checkIn).map(a => a.workerId));
+  const presentCount = presentWorkerIds.size;
+  const absentCount = Math.max(0, workers.length - presentCount);
+  
+  const rows = workers.map(w => {
+    const shiftTags = ['صباحي', 'مسائي'].map(shift => {
+      const rec = todaysAtt.find(a => a.workerId === w.id && a.shift === shift);
+      const isLate = rec && isLateRecord(rec);
+      let statusHtml = '';
+      if(!rec){
+        statusHtml = `<span class="badge badge-absent">${shift}: غائب</span>`;
+      } else if(!rec.checkOut){
+        statusHtml = `<span class="badge badge-open">${shift}: حاضر (${rec.checkIn}) ${isLate?'⚠️ متأخر':''}</span>`;
+      } else {
+        statusHtml = `<span class="badge badge-present">${shift}: ${rec.checkIn} → ${rec.checkOut} ${isLate?'⚠️ متأخر':''}</span>`;
+      }
+      return statusHtml;
+    }).join(' ');
+
+    const duty = dutyLog.find(d => d.workerId === w.id && d.date === today);
+    const dutyText = dutyRespText(duty);
+
+    return `
+    <div class="list-item" style="align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+      <div>
+        <div style="font-weight:700; font-size:15px;">👤 ${esc(w.name)}</div>
+        <div style="margin-top:4px;">${shiftTags}</div>
+        ${dutyText ? `<div class="muted" style="margin-top:4px; font-size:12.5px;">📋 المهام: ${esc(dutyText)}</div>` : ''}
+      </div>
+      <div>
+        ${presentWorkerIds.has(w.id) 
+          ? `<span class="badge badge-present" style="font-size:13px;">حاضر اليوم ✓</span>` 
+          : `<span class="badge badge-absent" style="font-size:13px;">غائب / لم يسجل</span>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="stats-grid">
+    <div class="stat-card forest">
+      <span class="stat-title">الحاضرون اليوم (${today})</span>
+      <span class="stat-val">${presentCount} / ${workers.length}</span>
+      <span class="stat-sub">متعاون مسجل حضور</span>
+    </div>
+    <div class="stat-card burgundy">
+      <span class="stat-title">الغائبون أو لم يسجلوا بعد</span>
+      <span class="stat-val">${absentCount}</span>
+      <span class="stat-sub">من أصل ${workers.length} متعاون</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h2>حالة حضور الفريق لليوم — ${today}</h2>
+      <button class="btn btn-outline btn-sm" onclick="refreshData()">🔄 تحديث لحظي</button>
+    </div>
+    ${rows || '<p class="empty">لا يوجد متعاونين مسجلين</p>'}
+  </div>`;
+}
+
 function supMonthly(){
   const wid = state.editWorkerId || (workers[0] && workers[0].id);
   const rec = wid ? getMonthlyRecord(wid, state.month) : null;
+  const c = wid ? calcWage(wid, state.month) : null;
   return `<div class="card">
     <div class="card-header">
       <h2>التقييم الشهري للمتعاونين</h2>
@@ -2580,18 +2680,28 @@ function supMonthly(){
     ${RUBRIC}
     ${wid ? `
     <div class="row">
+      <div>
+        <label>أيام الحضور المعتمدة (اتركه فارغاً للحساب التلقائي من البصمة: <b>${c.autoPresent} يوم</b>)</label>
+        <input id="mo-present" type="number" placeholder="تلقائي: ${c.autoPresent}" value="${rec.customPresentDays != null ? rec.customPresentDays : ''}">
+      </div>
       <div><label>الأيام الإضافية (عمل في يوم راحته)</label><input id="mo-extra" type="number" value="${rec.extraDays||0}"></div>
+    </div>
+    <div class="row">
+      <div><label>غياب مبرر (معتمد لا يُخصم من الراتب)</label><input id="mo-excused" type="number" value="${rec.excusedAbsence||0}"></div>
+      <div><label>عطلة مدفوعة الأجر (تُخصم من رصيد ${remainingPaidLeave(wid, state.month.slice(0,4))} يوم)</label><input id="mo-paidleave" type="number" value="${rec.paidLeaveDays||0}"></div>
+    </div>
+    <div class="row">
       <div><label>عدد جلسات اللايف (Live)</label><input id="mo-live" type="number" value="${rec.liveCount||0}"></div>
-    </div>
-    <div class="row">
       <div><label>الساعات الإضافية</label><input id="mo-ot" type="number" value="${rec.overtimeHours||0}"></div>
-      <div><label>منحة النقل (دج)</label><input id="mo-transport" type="number" value="${rec.transport||0}"></div>
     </div>
     <div class="row">
+      <div><label>منحة النقل (دج)</label><input id="mo-transport" type="number" value="${rec.transport||0}"></div>
       <div><label>نقاط المبيعات (من 50)</label><input id="mo-sales" type="number" max="50" value="${rec.salesScore||0}"></div>
-      <div><label>نقاط الميديا وصناعة المحتوى (من 50)</label><input id="mo-media" type="number" max="50" value="${rec.mediaScore||0}"></div>
     </div>
-    <label>ملاحظة تقييمية (اختياري)</label><input id="mo-note" value="${esc(rec.note||'')}" placeholder="ملاحظات حول أدائه هذا الشهر">
+    <div class="row">
+      <div><label>نقاط الميديا وصناعة المحتوى (من 50)</label><input id="mo-media" type="number" max="50" value="${rec.mediaScore||0}"></div>
+      <div><label>ملاحظة تقييمية (اختياري)</label><input id="mo-note" value="${esc(rec.note||'')}" placeholder="ملاحظات حول أدائه هذا الشهر"></div>
+    </div>
     <button class="btn btn-brass" onclick="saveMonthlyRecord('${wid}')">حفظ تقييم هذا الشهر</button>
     ` : '<p class="empty">أضف متعاوناً أولاً</p>'}
   </div>
@@ -2599,18 +2709,22 @@ function supMonthly(){
 }
 
 function saveMonthlyRecord(workerId){
+  const presVal = document.getElementById('mo-present').value.trim();
   const data = {
-    extraDays: Number(document.getElementById('mo-extra').value||0),
-    liveCount: Number(document.getElementById('mo-live').value||0),
-    overtimeHours: Number(document.getElementById('mo-ot').value||0),
-    transport: Number(document.getElementById('mo-transport').value||0),
-    salesScore: Math.min(50, Number(document.getElementById('mo-sales').value||0)),
-    mediaScore: Math.min(50, Number(document.getElementById('mo-media').value||0)),
+    customPresentDays: presVal === '' ? null : Number(presVal),
+    excusedAbsence: Number(document.getElementById('mo-excused').value || 0),
+    paidLeaveDays: Number(document.getElementById('mo-paidleave').value || 0),
+    extraDays: Number(document.getElementById('mo-extra').value || 0),
+    liveCount: Number(document.getElementById('mo-live').value || 0),
+    overtimeHours: Number(document.getElementById('mo-ot').value || 0),
+    transport: Number(document.getElementById('mo-transport').value || 0),
+    salesScore: Math.min(50, Number(document.getElementById('mo-sales').value || 0)),
+    mediaScore: Math.min(50, Number(document.getElementById('mo-media').value || 0)),
     note: document.getElementById('mo-note').value.trim(),
   };
   let existing = monthly.find(m=>m.workerId===workerId && m.month===state.month);
   if(existing) Object.assign(existing, data);
-  else monthly.push({ id:uid(), workerId, month:state.month, excusedAbsence:0, ...data });
+  else monthly.push({ id:uid(), workerId, month:state.month, ...data });
   saveMonthly();
   const w = workers.find(x=>x.id===workerId);
   logActivity(`${state.session.name} عدّل التقييم الشهري لـ ${w?w.name:'؟'} (${state.month})`);
