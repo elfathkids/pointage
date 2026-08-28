@@ -2,101 +2,323 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>الفتح — دفتر تقييم وأجور المتعاونين</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Markazi+Text:wght@500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Markazi+Text:wght@500;600;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<!-- SheetJS for real Excel (.xlsx) export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root{
-    --paper:#F3ECD8; --paper2:#EAE1C3; --ink:#22303F; --ink-soft:#5B6774;
-    --brass:#9C7318; --brass-light:#C9A227; --burgundy:#7A2E2E; --forest:#3C6E47;
-    --line:#CDBE93; --white:#FFFDF6; --shadow:0 2px 10px rgba(34,48,63,0.12);
+  :root {
+    --paper: #F6F3EB;
+    --paper-card: #FFFFFF;
+    --paper-subtle: #EDE7D8;
+    --ink: #1B263B;
+    --ink-light: #334155;
+    --ink-soft: #64748B;
+    --ink-muted: #94A3B8;
+    --brass: #A87919;
+    --brass-light: #D4AF37;
+    --brass-glow: rgba(168, 121, 25, 0.15);
+    --forest: #15803D;
+    --forest-light: #22C55E;
+    --forest-bg: #EAF7EE;
+    --burgundy: #991B1B;
+    --burgundy-light: #EF4444;
+    --burgundy-bg: #FEF2F2;
+    --amber-bg: #FFFBEB;
+    --amber-border: #FCD34D;
+    --line: #DFD7C2;
+    --line-subtle: #EBE4D5;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --shadow-sm: 0 1px 3px rgba(27,38,59,0.06), 0 1px 2px rgba(27,38,59,0.04);
+    --shadow-md: 0 4px 12px -2px rgba(27,38,59,0.08), 0 2px 6px -1px rgba(27,38,59,0.05);
+    --shadow-lg: 0 10px 25px -3px rgba(27,38,59,0.12), 0 4px 10px -2px rgba(27,38,59,0.06);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  *{box-sizing:border-box;}
-  body{ margin:0; font-family:'Cairo',sans-serif; color:var(--ink); background:var(--paper);
-    background-image:repeating-linear-gradient(to bottom, transparent 0px, transparent 37px, var(--line) 37px, var(--line) 38px);
-    min-height:100vh; direction:rtl; }
-  h1,h2,h3,.serif{ font-family:'Markazi Text',serif; }
-  #app{ max-width:1040px; margin:0 auto; padding:18px 16px 60px; }
-  .topbar{ display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 12px;
-    background:var(--ink); color:var(--white); position:sticky; top:0; z-index:50; }
-  .topbar img{ height:28px; width:auto; background:#fff; border-radius:5px; padding:2px; }
-  .topbar span{ font-family:'Markazi Text'; font-weight:700; font-size:17px; letter-spacing:.3px; }
-  .brandbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; margin-bottom:18px;
-    background:var(--ink); color:var(--white); border-radius:10px; box-shadow:var(--shadow); flex-wrap:wrap; gap:8px; }
-  .brandbar h1{ margin:0; font-size:26px; font-weight:700; }
-  .brandbar .sub{ font-size:13px; color:#C9D3DC; margin-top:2px; }
-  .brandbar .who{ font-size:14px; }
-  .brandbar .who b{ color:var(--brass-light); }
-  .tab-bar{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
-  .tab{ font-family:'Cairo'; font-weight:600; font-size:14px; padding:9px 16px 8px; cursor:pointer; border:none;
-    background:var(--paper2); color:var(--ink-soft); border-radius:8px 8px 0 0; border-bottom:3px solid transparent; transition:.15s; }
-  .tab:hover{ background:#E2D6AF; }
-  .tab.active{ background:var(--white); color:var(--ink); border-bottom:3px solid var(--brass); box-shadow:var(--shadow); }
-  .card{ background:var(--white); border-radius:10px; padding:20px; box-shadow:var(--shadow); margin-bottom:16px;
-    position:relative; border-top:3px solid var(--brass-light); }
-  .card h2{ margin:0 0 14px; font-size:22px; }
-  .card h3{ margin:0 0 10px; font-size:19px; color:var(--ink-soft); }
-  .muted{ color:var(--ink-soft); font-size:13.5px; }
-  .row{ display:flex; gap:12px; flex-wrap:wrap; }
-  .row > *{ flex:1; min-width:150px; }
-  label{ display:block; font-size:13.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; }
-  input, select{ width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:7px; font-family:'Cairo';
-    font-size:14.5px; background:#FFFDF9; color:var(--ink); margin-bottom:12px; }
-  input:focus, select:focus{ outline:none; border-color:var(--brass); }
-  .btn{ display:inline-block; padding:10px 22px; border-radius:7px; border:none; font-family:'Cairo'; font-weight:700;
-    font-size:14.5px; cursor:pointer; transition:.15s; }
-  .btn-primary{ background:var(--ink); color:var(--white); }
-  .btn-primary:hover{ background:#33465C; }
-  .btn-brass{ background:var(--brass); color:var(--white); }
-  .btn-brass:hover{ background:var(--brass-light); }
-  .btn-outline{ background:transparent; border:1.5px solid var(--ink-soft); color:var(--ink-soft); }
-  .btn-outline:hover{ background:var(--paper2); }
-  .btn-danger{ background:transparent; color:var(--burgundy); border:1.5px solid var(--burgundy); padding:6px 12px; font-size:13px;}
-  .btn-danger:hover{ background:#F6E9E9; }
-  .btn-sm{ padding:6px 14px; font-size:13px; }
-  table.ledger{ width:100%; border-collapse:collapse; font-size:13.5px; }
-  table.ledger th{ text-align:right; padding:8px 6px; border-bottom:2px solid var(--ink); color:var(--ink-soft); font-weight:700; font-size:12px; }
-  table.ledger td{ padding:9px 6px; border-bottom:1px dashed var(--line); font-variant-numeric:tabular-nums; }
-  table.ledger tr:last-child td{ border-bottom:none; }
-  table.ledger tr.total-row td{ border-top:2px solid var(--ink); font-weight:800; padding-top:12px; }
-  .amt{ font-weight:700; color:var(--forest); }
-  .neg{ color:var(--burgundy); }
-  .badge{ padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; white-space:nowrap; }
-  .badge-present{ background:#E1EEE3; color:var(--forest); }
-  .badge-absent{ background:#F3E1E1; color:var(--burgundy); }
-  .badge-open{ background:#FCF0D6; color:var(--brass); }
-  .stamp{ position:absolute; top:16px; left:16px; width:92px; height:92px; border-radius:50%; border:3px double var(--burgundy);
-    color:var(--burgundy); display:flex; align-items:center; justify-content:center; text-align:center; transform:rotate(-14deg);
-    font-family:'Markazi Text',serif; font-weight:700; font-size:16px; opacity:.85; line-height:1.15; pointer-events:none; }
-  .login-wrap{ max-width:460px; margin:60px auto 0; }
-  .role-tabs{ display:flex; gap:8px; margin-bottom:18px; }
-  .role-tabs .tab{ flex:1; text-align:center; border-radius:8px; border-bottom:3px solid transparent; }
-  .worker-checkin-box{ text-align:center; padding:30px 10px; }
-  .clock{ font-family:'Markazi Text'; font-size:52px; font-weight:700; color:var(--ink); margin:6px 0 2px; }
-  .list-item{ display:flex; align-items:center; justify-content:space-between; padding:10px 4px; border-bottom:1px dashed var(--line); gap:10px; flex-wrap:wrap;}
-  .list-item:last-child{ border-bottom:none; }
-  .pin-tag{ font-family:'Markazi Text'; font-weight:700; letter-spacing:2px; color:var(--brass); }
-  .empty{ text-align:center; padding:30px 10px; color:var(--ink-soft); }
-  .rubric{ background:var(--paper2); border-radius:8px; padding:12px 14px; font-size:13px; color:var(--ink-soft); margin-bottom:12px; }
-  .rubric b{ color:var(--ink); }
-  .rubric ul{ margin:6px 0 0; padding-inline-start:18px; }
-  details.rubric-box summary{ cursor:pointer; font-weight:700; color:var(--brass); font-size:13.5px; margin-bottom:8px; }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: 'Cairo', 'Tajawal', sans-serif;
+    color: var(--ink);
+    background-color: var(--paper);
+    background-image: radial-gradient(#d6ccb4 0.75px, transparent 0.75px), radial-gradient(#d6ccb4 0.75px, var(--paper) 0.75px);
+    background-size: 30px 30px;
+    background-position: 0 0, 15px 15px;
+    min-height: 100vh;
+    direction: rtl;
+    line-height: 1.5;
+  }
+
+  h1, h2, h3, .serif { font-family: 'Markazi Text', 'Cairo', serif; }
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--paper-subtle); }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--brass); }
+
+  #app { max-width: 1100px; margin: 0 auto; padding: 12px 14px 70px; }
+
+  /* Top sticky branding */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; background: var(--ink); color: #fff;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 10px; }
+  .topbar img { height: 30px; width: auto; background: #fff; border-radius: 6px; padding: 2px; }
+  .topbar span { font-family: 'Markazi Text'; font-weight: 700; font-size: 19px; letter-spacing: .4px; }
+
+  /* Brandbar */
+  .brandbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; margin-bottom: 16px; background: linear-gradient(135deg, #1B263B 0%, #2A3B53 100%);
+    color: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+    flex-wrap: wrap; gap: 12px; border: 1px solid rgba(255,255,255,0.08);
+  }
+  .brandbar h1 { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.1; }
+  .brandbar .sub { font-size: 13px; color: #CBD5E1; margin-top: 2px; }
+  .brandbar .who { font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .brandbar .who b { color: var(--brass-light); font-weight: 700; }
+
+  /* Navigation Tabs */
+  .tab-bar {
+    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 16px;
+    -ms-overflow-style: none; scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    font-family: 'Cairo'; font-weight: 700; font-size: 13.5px; padding: 9px 16px; cursor: pointer;
+    border: none; background: var(--paper-subtle); color: var(--ink-light); border-radius: var(--radius-md);
+    transition: var(--transition); white-space: nowrap; display: flex; align-items: center; gap: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .tab:hover { background: #E4DBC5; color: var(--ink); transform: translateY(-1px); }
+  .tab.active {
+    background: var(--ink); color: #fff; box-shadow: 0 4px 10px rgba(27,38,59,0.2);
+    border-bottom: none;
+  }
+  .tab .tab-badge {
+    background: var(--burgundy-light); color: #fff; font-size: 11px; padding: 1px 7px;
+    border-radius: 12px; font-weight: 800;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--paper-card); border-radius: var(--radius-lg); padding: 22px;
+    box-shadow: var(--shadow-sm); margin-bottom: 18px; position: relative;
+    border: 1px solid var(--line); transition: var(--transition);
+  }
+  .card:hover { box-shadow: var(--shadow-md); }
+  .card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1.5px dashed var(--line);
+  }
+  .card h2 { margin: 0; font-size: 23px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .card h3 { margin: 0 0 12px; font-size: 19px; color: var(--ink-light); }
+  .muted { color: var(--ink-soft); font-size: 13.5px; }
+
+  /* KPI / Stats Cards */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 18px;
+  }
+  .stat-card {
+    background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md);
+    padding: 14px 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 4px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 4px; background: var(--brass);
+  }
+  .stat-card.forest::before { background: var(--forest); }
+  .stat-card.burgundy::before { background: var(--burgundy-light); }
+  .stat-card.ink::before { background: var(--ink); }
+  .stat-title { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+  .stat-val { font-size: 22px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .stat-sub { font-size: 11.5px; color: var(--ink-muted); }
+
+  /* Forms & Inputs */
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .row > * { flex: 1; min-width: 160px; }
+  label { display: block; font-size: 13px; font-weight: 700; color: var(--ink-light); margin-bottom: 6px; }
+  input, select, textarea {
+    width: 100%; padding: 10px 14px; border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+    font-family: 'Cairo', sans-serif; font-size: 14px; background: #FFFDF9; color: var(--ink);
+    margin-bottom: 12px; transition: var(--transition);
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--brass); box-shadow: 0 0 0 3px var(--brass-glow); background: #fff;
+  }
+  input[type="checkbox"] { cursor: pointer; accent-color: var(--brass); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 20px; border-radius: var(--radius-sm); border: none; font-family: 'Cairo';
+    font-weight: 700; font-size: 14px; cursor: pointer; transition: var(--transition); text-decoration: none;
+    box-shadow: var(--shadow-sm); user-select: none;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--ink); color: #fff; }
+  .btn-primary:hover { background: #2b3d56; box-shadow: var(--shadow-md); color: #fff; }
+  .btn-brass { background: linear-gradient(135deg, #A87919 0%, #C9A227 100%); color: #fff; }
+  .btn-brass:hover { background: linear-gradient(135deg, #966b14 0%, #b8911c 100%); box-shadow: 0 4px 12px rgba(168,121,25,0.3); }
+  .btn-forest { background: var(--forest); color: #fff; }
+  .btn-forest:hover { background: #116932; box-shadow: 0 4px 12px rgba(21,128,61,0.25); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--line); color: var(--ink-light); }
+  .btn-outline:hover { background: var(--paper-subtle); border-color: var(--ink-soft); color: var(--ink); }
+  .btn-danger { background: var(--burgundy-bg); color: var(--burgundy); border: 1.5px solid rgba(153,27,27,0.2); }
+  .btn-danger:hover { background: var(--burgundy); color: #fff; }
+  .btn-sm { padding: 6px 12px; font-size: 12.5px; border-radius: 6px; }
+  .btn-icon { padding: 8px; border-radius: 8px; }
+
+  /* Table styling */
+  .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius-md); }
+  table.ledger { width: 100%; border-collapse: collapse; font-size: 13.5px; white-space: nowrap; }
+  table.ledger th {
+    text-align: right; padding: 11px 12px; background: var(--paper-subtle); border-bottom: 2px solid var(--line);
+    color: var(--ink); font-weight: 800; font-size: 12.5px;
+  }
+  table.ledger td {
+    padding: 12px; border-bottom: 1px solid var(--line-subtle); font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+  }
+  table.ledger tr:hover td { background: rgba(212, 175, 55, 0.04); }
+  table.ledger tr.total-row td {
+    border-top: 2px solid var(--ink); font-weight: 800; padding: 14px 12px; background: var(--paper-subtle);
+  }
+  .amt { font-weight: 800; color: var(--forest); }
+  .neg { color: var(--burgundy); font-weight: 700; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+    border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  }
+  .badge-present { background: var(--forest-bg); color: var(--forest); border: 1px solid rgba(21,128,61,0.2); }
+  .badge-absent { background: var(--burgundy-bg); color: var(--burgundy); border: 1px solid rgba(153,27,27,0.2); }
+  .badge-open { background: var(--amber-bg); color: var(--brass); border: 1px solid var(--amber-border); }
+
+  /* Progress Bar for Score */
+  .score-bar {
+    width: 80px; height: 7px; background: #E2E8F0; border-radius: 10px; overflow: hidden; display: inline-block;
+    vertical-align: middle; margin-left: 6px;
+  }
+  .score-bar-fill { height: 100%; background: linear-gradient(90deg, #A87919, #22C55E); border-radius: 10px; }
+
+  /* Official Stamp Watermark */
+  .stamp {
+    position: absolute; top: 16px; left: 16px; width: 84px; height: 84px; border-radius: 50%;
+    border: 3px double var(--burgundy); color: var(--burgundy); display: flex; align-items: center;
+    justify-content: center; text-align: center; transform: rotate(-12deg); font-family: 'Markazi Text', serif;
+    font-weight: 700; font-size: 15px; opacity: .85; line-height: 1.15; pointer-events: none;
+    box-shadow: inset 0 0 0 2px rgba(153,27,27,0.15);
+  }
+
+  /* Login Card */
+  .login-wrap { max-width: 480px; margin: 40px auto 0; }
+  .role-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .role-tabs .tab { flex: 1; justify-content: center; border-radius: var(--radius-md); }
+
+  /* Check-in Clock Box */
+  .worker-checkin-box {
+    text-align: center; padding: 24px 16px; background: linear-gradient(180deg, #FFFFFF 0%, var(--paper) 100%);
+    border: 2px dashed var(--line);
+  }
+  .clock {
+    font-family: 'Markazi Text', serif; font-size: 56px; font-weight: 800; color: var(--ink);
+    margin: 4px 0; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  .list-item {
+    display: flex; align-items: center; justify-content: space-between; padding: 12px 6px;
+    border-bottom: 1px solid var(--line-subtle); gap: 10px; flex-wrap: wrap;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .pin-tag {
+    font-family: 'Markazi Text'; font-weight: 700; letter-spacing: 2px; color: var(--brass);
+    background: var(--amber-bg); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--amber-border);
+  }
+  .empty { text-align: center; padding: 36px 16px; color: var(--ink-soft); font-weight: 600; }
+
+  /* Rubric collapsible */
+  .rubric {
+    background: var(--paper-subtle); border-radius: var(--radius-md); padding: 14px 18px;
+    font-size: 13.5px; color: var(--ink-light); margin-bottom: 14px; border: 1px solid var(--line);
+  }
+  .rubric b { color: var(--ink); }
+  .rubric ul { margin: 6px 0 0; padding-inline-start: 20px; }
+  details.rubric-box summary {
+    cursor: pointer; font-weight: 700; color: var(--brass); font-size: 14px; margin-bottom: 10px;
+    user-select: none;
+  }
+
+  /* Toast Notification System */
+  #toast-container {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 90%; max-width: 420px;
+  }
+  .toast {
+    background: var(--ink); color: #fff; padding: 12px 18px; border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg); font-size: 14px; font-weight: 600; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; pointer-events: auto; animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border-right: 4px solid var(--brass-light);
+  }
+  .toast.success { border-right-color: var(--forest-light); }
+  .toast.error { border-right-color: var(--burgundy-light); }
+  .toast.warning { border-right-color: var(--brass-light); }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(0.95); } }
+  @keyframes toastOut { to { opacity: 0; transform: translateY(-10px) scale(0.95); } }
+
+  /* Print Styles for Payroll Slip */
+  @media print {
+    body { background: #fff !important; color: #000 !important; }
+    .topbar, .tab-bar, .brandbar .who, .btn, .no-print { display: none !important; }
+    #app { max-width: 100% !important; padding: 0 !important; }
+    .card { border: 1px solid #000 !important; box-shadow: none !important; page-break-inside: avoid; }
+    .stamp { opacity: 1 !important; }
+  }
 </style>
 </head>
 <body>
+
+<div id="toast-container"></div>
 <div id="app"><div class="empty">جارِ التحميل...</div></div>
+
 <script>
+/* ====== TOAST NOTIFICATION SYSTEM (بديل احترافي لـ alert) ====== */
+function showToast(message, type='info', duration=3200){
+  const container = document.getElementById('toast-container');
+  if(!container) return;
+  const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${icons[type] || 'ℹ️'} ${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(()=>{
+    toast.style.animation = 'toastOut 0.3s forwards';
+    setTimeout(()=> toast.remove(), 300);
+  }, duration);
+}
+
 window.addEventListener('error', function(e){
   console.error('Uncaught error:', e.error || e.message);
-  alert('حدث خطأ غير متوقع: ' + (e.message||'') + '\nلو تكرر، ابعث هذا النص لصاحب البرنامج.');
+  showToast('حدث خطأ غير متوقع: ' + (e.message||''), 'error', 5000);
 });
+
 function setFavicon(href){
-  var link = document.querySelector("link[rel~='icon']");
+  let link = document.querySelector("link[rel~='icon']");
   if(!link){ link = document.createElement('link'); link.rel='icon'; document.head.appendChild(link); }
   link.href = href;
 }
+
 const KEYS = { config:'config', workers:'workers', attendance:'attendance', monthly:'monthlyRecords', payments:'payments', requests:'requests', activity:'activityLog', duty:'dutyLog', supAttendance:'supervisorAttendance', notifications:'notifications' };
 const LOGO = "https://e.top4top.io/p_3890z6ga61.png";
 setFavicon(LOGO);
@@ -167,7 +389,14 @@ async function fbSetForShop(shopId, key, value){
   return await res.json();
 }
 
-let state = { screen:'loading', shopId:null, loginRole:null, session:null, tab:null, month:null, editWorkerId:null, detailWorkerId:null, confirmDeleteId:null, editAttendanceId:null, editWorkerWageId:null, editWorkerPinId:null, editSupervisorPinId:null, report:null, shopAdminOpen:false, shopAdminAuthed:false, shopAdminConfirmDeleteId:null, adminAddSupShopId:null, historyWorkerId:'' };
+let state = {
+  screen:'loading', shopId:null, loginRole:null, session:null, tab:null,
+  month:null, editWorkerId:null, detailWorkerId:null, confirmDeleteId:null,
+  editAttendanceId:null, editWorkerWageId:null, editWorkerPinId:null, editSupervisorPinId:null,
+  report:null, shopAdminOpen:false, shopAdminAuthed:false, shopAdminConfirmDeleteId:null,
+  adminAddSupShopId:null, historyWorkerId:'', searchWorkerText:''
+};
+
 let config=null, workers=[], attendance=[], monthly=[], payments=[], requests=[], activityLog=[], dutyLog=[], supervisorAttendance=[], notifications=[];
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -199,12 +428,6 @@ function getGeoLocation(){
     );
   });
 }
-function distanceMeters(lat1,lng1,lat2,lng2){
-  const R=6371000, toRad=d=>d*Math.PI/180;
-  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
-  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
 function mapLink(lat,lng){ return `https://www.google.com/maps?q=${lat},${lng}`; }
 
 async function loadAll(){
@@ -224,7 +447,7 @@ async function loadAll(){
 }
 async function persist(key, value){
   try{ await fbSet(key, value); }
-  catch(e){ console.error(e); alert('حدث خطأ أثناء الحفظ (تحقق من الاتصال بالإنترنت)، حاول مجددا.'); }
+  catch(e){ console.error(e); showToast('حدث خطأ أثناء الحفظ (تحقق من الاتصال بالإنترنت)', 'error'); }
 }
 function saveConfig(){ persist(KEYS.config, config); }
 function saveWorkers(){ persist(KEYS.workers, workers); }
@@ -253,7 +476,6 @@ function autoSyncToSheet(entry){
   }).catch(()=>{});
 }
 
-/* ====== مزامنة فورية إلى شيت المدير العام (لكل المحلات) ====== */
 function syncToMasterSheet(entry){
   if(!shopsRegistry || !shopsRegistry.masterSheetUrl) return;
   const shopTitle = (config && config.shopName) ? config.shopName : (shopsRegistry.shops.find(s=>s.id===state.shopId)||{}).name || state.shopId || 'المحل';
@@ -302,12 +524,12 @@ function lateWarningBanner(month, onlyWorkerId){
   const rows = warns.map(x=>{
     const aboutToHit = x.lc % threshold === threshold-1;
     const msg = aboutToHit
-      ? `عنده ${x.lc} تأخيرات هذا الشهر — تأخير واحد آخر يساوي خصم يوم غياب من الأجرة`
-      : `وصل لـ ${x.lc} تأخيرات هذا الشهر — تم خصم ${Math.floor(x.lc/threshold)} يوم غياب من الأجرة بسبب التأخر`;
-    return `<div class="list-item"><div><b>${esc(x.w.name)}</b> — ${msg}</div></div>`;
+      ? `عنده <b>${x.lc} تأخيرات</b> هذا الشهر — تأخير واحد إضافي يؤدي لخصم يوم غياب كامل من الأجرة.`
+      : `وصل لـ <b>${x.lc} تأخيرات</b> هذا الشهر — تم خصم <b>${Math.floor(x.lc/threshold)} يوم غياب</b> بسبب تكرار التأخر.`;
+    return `<div class="list-item" style="border-bottom:none; padding:6px 0;"><div>⚠️ <b>${esc(x.w.name)}</b>: ${msg}</div></div>`;
   }).join('');
-  return `<div class="card" style="border-top-color:var(--burgundy);">
-    <h3>⚠️ تنبيه التأخر</h3>${rows}
+  return `<div class="card" style="border-right: 4px solid var(--burgundy); background: var(--burgundy-bg);">
+    <h3 style="color:var(--burgundy); margin:0 0 6px;">⚠️ تنبيهات التأخر المالي</h3>${rows}
   </div>`;
 }
 function calcWage(workerId, month){
@@ -341,12 +563,14 @@ function isPaid(workerId, month){ return !!payments.find(p=>p.workerId===workerI
 
 const REQ_TYPES = { extraDays:'يوم عمل إضافي', live:'جلسة لايف', overtime:'ساعات إضافية', excusedAbsence:'غياب مبرر (لا يُخصم)', paidLeave:'عطلة مدفوعة الأجر' };
 const REQ_FIELD = { extraDays:'extraDays', live:'liveCount', overtime:'overtimeHours', excusedAbsence:'excusedAbsence', paidLeave:'paidLeaveDays' };
+
 function addRequest(workerId, type, amount, note, month){
-  if(!amount || amount<=0){ alert('أدخل قيمة صحيحة'); return; }
+  if(!amount || amount<=0){ showToast('أدخل قيمة صحيحة', 'warning'); return; }
   requests.push({ id:uid(), workerId, type, amount:Number(amount), note:note||'', month, status:'pending', createdAt:todayStr() });
   saveRequests();
   const w = workers.find(x=>x.id===workerId);
   logActivity(`${w?w.name:'؟'} قدّم طلب ${REQ_TYPES[type]}: ${amount} (${month})`);
+  showToast('تم إرسال طلبك للإدارة بنجاح', 'success');
   render();
 }
 function decideRequest(id, approve){
@@ -364,6 +588,7 @@ function decideRequest(id, approve){
   saveRequests();
   const w = workers.find(x=>x.id===req.workerId);
   logActivity(`${state.session.name} ${approve?'وافق على':'رفض'} طلب ${REQ_TYPES[req.type]} للمتعاون ${w?w.name:'؟'} (${req.month})`);
+  showToast(approve ? 'تم قبول الطلب وتحديث الحسابات' : 'تم رفض الطلب', approve?'success':'info');
   render();
 }
 function pendingRequestsCount(){ return requests.filter(r=>r.status==='pending').length; }
@@ -374,6 +599,7 @@ function togglePaid(workerId, month){
   savePayments();
   const w = workers.find(x=>x.id===workerId);
   logActivity(`${state.session.name} علّم أجرة ${w?w.name:'؟'} لشهر ${month} كـ ${rec.paid?'مصروف':'غير مصروف'}`);
+  showToast(rec.paid ? 'تم تعليم الراتب كمصروف ✅' : 'تم إلغاء تعليم الراتب', 'info');
   render();
 }
 function daysUntilPayday(){
@@ -384,8 +610,11 @@ function daysUntilPayday(){
 }
 function paydayBanner(){
   const d=daysUntilPayday();
-  const label = d===0? 'اليوم هو يوم صرف الأجور 💰' : `باقي ${d} ${d===1?'يوم':'أيام'} على موعد صرف الأجور (يوم ${config.paydayDay} من كل شهر)`;
-  return `<div class="card" style="border-top-color:var(--forest); text-align:center; padding:12px;"><b>${label}</b></div>`;
+  const label = d===0? 'اليوم هو موعد صرف الأجور 💰' : `باقي ${d} ${d===1?'يوم':'أيام'} على موعد صرف الأجور (يوم ${config.paydayDay} من كل شهر)`;
+  return `<div class="card" style="background: linear-gradient(135deg, #15803D 0%, #166534 100%); color:#fff; padding:14px 20px; border:none; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+    <div style="font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px;">📅 <span>${label}</span></div>
+    <div style="font-size:13px; opacity:0.9;">دفتر رواتب الفتح</div>
+  </div>`;
 }
 
 async function checkShopNetwork(){
@@ -395,13 +624,178 @@ async function checkShopNetwork(){
     const data = await res.json();
     return data.ip === config.shopPublicIP;
   }catch(e){
-    alert('تعذر التحقق من الشبكة (تأكد من الاتصال بالإنترنت). لن يتم تسجيل الحضور.');
+    showToast('تعذر التحقق من شبكة الواي فاي (تحقق من الإنترنت)', 'error');
     return false;
   }
 }
 
+/* ================= EXPORT ENHANCEMENTS (EXCEL XLSX & GOOGLE SHEETS) ================= */
+
+// تصدير جدول الأجور إلى ملف Excel حقيقي (.xlsx)
+function exportWagesExcel(month){
+  if(!workers.length){ showToast('لا يوجد بيانات لتصديرها', 'warning'); return; }
+  
+  const shopName = config ? config.shopName : 'المحل';
+  const data = [
+    [`كشف الأجور والتقييم الشهري — ${shopName}`],
+    [`الشهر: ${month}`, `تاريخ الاستخراج: ${todayStr()}`],
+    [],
+    [
+      'المتعاون', 'الراتب الأساسي (دج)', 'أيام الحضور', 'الغياب المحتسب', 'مرات التأخر',
+      'الأيام الإضافية', 'نقاط المبيعات (/50)', 'نقاط الميديا (/50)', 'إجمالي التقييم (/100)',
+      'مكافأة التقييم (دج)', 'مستحقات اللايف (دج)', 'الساعات الإضافية (دج)', 'منحة النقل (دج)',
+      'الراتب الإجمالي المقرب (دج)', 'حالة الصرف'
+    ]
+  ];
+
+  let totalPayout = 0;
+  workers.forEach(w => {
+    const c = calcWage(w.id, month);
+    const paid = isPaid(w.id, month);
+    totalPayout += c.rounded;
+    data.push([
+      c.w.name, c.baseSalary, `${c.present}/${c.expected}`, c.absence, c.lateCount,
+      c.rec.extraDays || 0, c.rec.salesScore || 0, c.rec.mediaScore || 0, c.evalTotal,
+      Math.round(c.bonus), Math.round(c.livePay), Math.round(c.overtimePay), c.transport,
+      c.rounded, paid ? 'مصروف' : 'غير مصروف'
+    ]);
+  });
+
+  data.push([]);
+  data.push(['المجموع الإجمالي للأجور', '', '', '', '', '', '', '', '', '', '', '', '', totalPayout, '']);
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [
+    { wch: 18 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 16 },
+    { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 22 }, { wch: 14 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `أجور_${month}`);
+  XLSX.writeFile(wb, `كشف_أجور_${shopName.replace(/\s+/g,'_')}_${month}.xlsx`);
+  showToast('تم تحميل ملف Excel للأجور بنجاح 📊', 'success');
+}
+
+// تصدير سجل الحضور والانصراف إلى ملف Excel
+function exportAttendanceExcel(month){
+  const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
+  const rows = attendance.filter(a=>a.date.slice(0,7)===month && (!state.historyWorkerId || a.workerId===state.historyWorkerId))
+    .sort((a,b)=> a.date.localeCompare(b.date));
+
+  if(!rows.length){ showToast('لا توجد سجلات حضور لهذا الشهر', 'warning'); return; }
+
+  const shopName = config ? config.shopName : 'المحل';
+  const data = [
+    [`سجل الحضور والانصراف — ${shopName}`],
+    [`الشهر: ${month}`, `تاريخ الاستخراج: ${todayStr()}`],
+    [],
+    ['التاريخ', 'المتعاون', 'الفوج', 'وقت الدخول', 'وقت الخروج', 'حالة التأخر', 'الملاحظات']
+  ];
+
+  rows.forEach(r => {
+    data.push([
+      r.date, wname(r.workerId), r.shift || '—', r.checkIn || '—', r.checkOut || '—',
+      isLateRecord(r) ? 'متأخر' : 'في الوقت', r.notes || ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 30 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
+  XLSX.writeFile(wb, `سجل_حضور_${shopName.replace(/\s+/g,'_')}_${month}.xlsx`);
+  showToast('تم تصدير سجل الحضور إلى Excel 📋', 'success');
+}
+
+// تصدير تقرير العمل المخصص إلى Excel
+function exportReportExcel(){
+  const rows = reportRows();
+  if(!rows.length){ showToast('لا توجد بيانات في هذه الفترة', 'warning'); return; }
+  const [from, to] = reportRange();
+  const shopName = config ? config.shopName : 'المحل';
+  const data = [
+    [`تقرير العمل المنجز — ${shopName}`],
+    [`الفترة من: ${from} إلى: ${to}`, `تاريخ الاستخراج: ${todayStr()}`],
+    [],
+    ['التاريخ', 'المتعاون', 'وقت الدخول', 'وقت الخروج', 'المهام المنجزة', 'عدد المهام', 'ملاحظات', 'التأخر']
+  ];
+
+  rows.forEach(r => {
+    data.push([r.date, r.worker, r.checkIn||'—', r.checkOut||'—', r.tasks||'—', r.taskCount, r.notes||'', r.late]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{ wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 12 }, { wch: 35 }, { wch: 10 }, { wch: 25 }, { wch: 10 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'تقرير_العمل');
+  XLSX.writeFile(wb, `تقرير_العمل_${shopName.replace(/\s+/g,'_')}_${from}_${to}.xlsx`);
+  showToast('تم تحميل تقرير العمل بصيغة Excel 📊', 'success');
+}
+
+// طباعة قسيمة الأجر الرسمية (Payslip Print)
+function printPayslip(workerId, month){
+  const c = calcWage(workerId, month);
+  if(!c) return;
+  const paid = isPaid(workerId, month);
+  const shopName = config ? config.shopName : 'الفتح';
+  
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>وصل استلام الأجرة — ${c.w.name} (${month})</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Markazi+Text:wght@700&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Cairo', sans-serif; padding: 30px; color: #1e293b; background: #fff; line-height: 1.6; direction: rtl; }
+        .payslip-box { max-width: 650px; margin: 0 auto; border: 2px solid #0f172a; padding: 24px; border-radius: 8px; position: relative; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+        .header h1 { margin: 0; font-family: 'Markazi Text', serif; font-size: 26px; }
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
+        .table td { padding: 8px 10px; border-bottom: 1px dashed #cbd5e1; }
+        .table td:last-child { text-align: left; font-weight: 700; }
+        .total-row { font-size: 17px; font-weight: 800; border-top: 2px solid #0f172a; background: #f8fafc; }
+        .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; }
+        .stamp-mark { border: 2px dashed #991b1b; color: #991b1b; padding: 6px 16px; border-radius: 20px; font-weight: 700; display: inline-block; }
+      </style>
+    </head>
+    <body onload="window.print()">
+      <div class="payslip-box">
+        <div class="header">
+          <div>
+            <h1>${shopName}</h1>
+            <div>وصل استلام الأجرة الشهرية — <b>${month}</b></div>
+          </div>
+          <div class="stamp-mark">${paid ? 'خالص ومصروف ✓' : 'قيد الصرف'}</div>
+        </div>
+        <table class="table">
+          <tr><td>اسم المتعاون:</td><td>${c.w.name}</td></tr>
+          <tr><td>الراتب الأساسي المعتمد:</td><td>${fmt(c.baseSalary)} دج</td></tr>
+          <tr><td>أيام الحضور الفعلي:</td><td>${c.present} من ${c.expected} يوم</td></tr>
+          <tr><td>أيام الغياب المحتسبة (مع التأخيرات):</td><td>${c.absence} يوم</td></tr>
+          <tr><td>الأيام الإضافية:</td><td>${c.rec.extraDays || 0} يوم</td></tr>
+          <tr><td>تقييم الأداء (مبيعات + ميديا):</td><td>${c.evalTotal} / 100</td></tr>
+          <tr><td>مكافأة التقييم المستحقة:</td><td>${fmt(c.bonus)} دج</td></tr>
+          <tr><td>مستحقات البث المباشر (اللايف):</td><td>${fmt(c.livePay)} دج</td></tr>
+          <tr><td>مستحقات الساعات الإضافية:</td><td>${fmt(c.overtimePay)} دج</td></tr>
+          <tr><td>منحة النقل:</td><td>${fmt(c.transport)} دج</td></tr>
+          <tr class="total-row"><td>صافي الراتب المستحق (مقرّب):</td><td>${fmt(c.rounded)} دج</td></tr>
+        </table>
+        <div class="signatures">
+          <div>توقيع صاحب المحل / الإدارة: _________</div>
+          <div>توقيع واستلام المتعاون: _________</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
 async function exportToSheet(month){
-  if(!config.sheetsWebhookUrl){ alert('أدخل رابط Google Apps Script أولاً من الإعدادات'); return; }
+  if(!config.sheetsWebhookUrl){ showToast('أدخل رابط Google Apps Script أولاً من الإعدادات', 'warning'); return; }
   const rows = workers.map(w=>{
     const c = calcWage(w.id, month);
     return { month, workerName:c.w.name, present:c.present, expected:c.expected, absence:c.absence,
@@ -414,13 +808,14 @@ async function exportToSheet(month){
       method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({ type:'wages', shopName:config.shopName, month, rows })
     });
-    alert('تم إرسال بيانات الشهر إلى Google Sheet. تحقق من الشيت للتأكد.');
+    showToast('تم إرسال بيانات الشهر إلى Google Sheet بنجاح 🚀', 'success');
   }catch(e){
-    alert('حدث خطأ أثناء الإرسال، تحقق من الرابط والاتصال بالإنترنت.');
+    showToast('حدث خطأ أثناء الإرسال إلى Google Sheet', 'error');
   }
 }
+
 async function exportActivityToSheet(month){
-  if(!config.sheetsWebhookUrl){ alert('أدخل رابط Google Apps Script أولاً من الإعدادات'); return; }
+  if(!config.sheetsWebhookUrl){ showToast('أدخل رابط Google Apps Script أولاً من الإعدادات', 'warning'); return; }
   const rows = activityLog.filter(a=> a.at.slice(0,7)===month).sort((a,b)=> a.at.localeCompare(b.at)).map(a=>{
     const d = new Date(a.at);
     return { date:d.toISOString().slice(0,10), time:d.toTimeString().slice(0,5), actor:a.actor, action:a.action };
@@ -430,11 +825,12 @@ async function exportActivityToSheet(month){
       method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({ type:'activity', shopName:config.shopName, month, rows })
     });
-    alert('تم إرسال السجل العام إلى Google Sheet. تحقق من الشيت للتأكد.');
+    showToast('تم إرسال السجل العام إلى Google Sheet ✅', 'success');
   }catch(e){
-    alert('حدث خطأ أثناء الإرسال، تحقق من الرابط والاتصال بالإنترنت.');
+    showToast('حدث خطأ أثناء الإرسال للشيت', 'error');
   }
 }
+
 function exportActivityCSV(month){
   const rows = activityLog.filter(a=> a.at.slice(0,7)===month).sort((a,b)=> a.at.localeCompare(b.at));
   let csv = '\uFEFF' + 'التاريخ,الوقت,الفاعل,الحدث\n';
@@ -451,15 +847,20 @@ function exportActivityCSV(month){
   a.href = url; a.download = `السجل_العام_${month}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  showToast('تم تحميل السجل العام بصيغة CSV 📥', 'success');
 }
 
 /* ================= RENDER DISPATCH ================= */
 function topBar(){
   return `<div class="topbar">
-    <img src="${LOGO}" alt="الفتح">
-    <span>الفتح — دفتر تقييم وأجور المتعاونين</span>
+    <div class="topbar-brand">
+      <img src="${LOGO}" alt="الفتح">
+      <span>الفتح — دفتر تقييم وأجور المتعاونين</span>
+    </div>
+    ${state.session ? `<div style="font-size:13px; opacity:0.9;">${esc(state.session.name)}</div>` : ''}
   </div>`;
 }
+
 function render(){
   const app=document.getElementById('app');
   let body='';
@@ -472,20 +873,21 @@ function render(){
   else if(state.screen==='worker') body=viewWorker();
   app.innerHTML = topBar() + body;
 }
+
 function viewShopSelect(){
   const list = shopsRegistry.shops;
   let adminPanel = '';
   if(state.shopAdminOpen){
     if(!shopsRegistry.masterPin){
-      adminPanel = `<div class="card">
+      adminPanel = `<div class="card" style="margin-top:14px; border-top: 3px solid var(--brass);">
         <h3>إعداد رمز إدارة المحلات (أول مرة)</h3>
-        <p class="muted">هذا الرمز يحميك من إضافة أو حذف محلات من أي شخص آخر عنده رابط البرنامج.</p>
+        <p class="muted">هذا الرمز يحميك من إضافة أو حذف محلات من أي شخص آخر يملك رابط البرنامج.</p>
         <input id="admin-pin-new" placeholder="رمز جديد (4 أرقام أو أكثر)">
         <button class="btn btn-brass" onclick="setMasterPin()">حفظ الرمز والمتابعة</button>
       </div>`;
     } else if(!state.shopAdminAuthed){
-      adminPanel = `<div class="card">
-        <h3>إدارة المحلات</h3>
+      adminPanel = `<div class="card" style="margin-top:14px; border-top: 3px solid var(--brass);">
+        <h3>إدارة المحلات المركزية</h3>
         <input id="admin-pin-check" type="password" placeholder="رمز إدارة المحلات">
         <button class="btn btn-brass" onclick="checkMasterPin()">دخول</button>
       </div>`;
@@ -493,11 +895,11 @@ function viewShopSelect(){
       const rows = list.map(s=>`<div class="list-item" style="flex-direction:column; align-items:stretch;">
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <div><b>${esc(s.name)}</b> <span class="muted">(${esc(s.id)})</span></div>
-          <div>
-            <button class="btn btn-outline btn-sm" onclick="state.adminAddSupShopId=(state.adminAddSupShopId==='${s.id}'?null:'${s.id}'); render();">+ إضافة مشرف</button>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="state.adminAddSupShopId=(state.adminAddSupShopId==='${s.id}'?null:'${s.id}'); render();">+ مشرف</button>
             ${state.shopAdminConfirmDeleteId===s.id
-              ? `<span class="muted">متأكد؟</span> <button class="btn btn-danger" onclick="deleteShop('${s.id}')">نعم، احذف</button> <button class="btn btn-outline btn-sm" onclick="state.shopAdminConfirmDeleteId=null; render();">إلغاء</button>`
-              : `<button class="btn btn-danger" onclick="state.shopAdminConfirmDeleteId='${s.id}'; render();">حذف</button>`}
+              ? `<button class="btn btn-danger btn-sm" onclick="deleteShop('${s.id}')">تأكيد الحذف</button> <button class="btn btn-outline btn-sm" onclick="state.shopAdminConfirmDeleteId=null; render();">إلغاء</button>`
+              : `<button class="btn btn-danger btn-sm" onclick="state.shopAdminConfirmDeleteId='${s.id}'; render();">حذف</button>`}
           </div>
         </div>
         ${state.adminAddSupShopId===s.id ? `
@@ -508,20 +910,19 @@ function viewShopSelect(){
           <button class="btn btn-brass btn-sm" onclick="addSupervisorToShop('${s.id}')">حفظ المشرف لهذا المحل</button>
         ` : ''}
       </div>`).join('');
-      adminPanel = `<div class="card">
+      adminPanel = `<div class="card" style="margin-top:14px;">
         <button class="btn btn-brass" style="width:100%; margin-bottom:14px;" onclick="openAllShopsOverview()">📊 نظرة عامة على كل المحلات</button>
-        <h3>إدارة المحلات</h3>
+        <h3>إدارة المحلات المركزية</h3>
         ${rows || '<p class="empty">لا يوجد محلات</p>'}
         <div class="row" style="margin-top:12px;">
           <div><label>اسم المحل الجديد</label><input id="new-shop-name" placeholder="مثال: محل قسنطينة"></div>
-          <div><label>معرف الرابط (إنجليزي، بدون مسافات)</label><input id="new-shop-id" placeholder="constantine"></div>
+          <div><label>معرف الرابط (إنجليزي)</label><input id="new-shop-id" placeholder="constantine"></div>
         </div>
         <button class="btn btn-brass" onclick="addShop()">إضافة المحل</button>
 
         <div style="margin-top:16px; padding-top:14px; border-top:2px dashed var(--line);">
-          <h3>📊 ربط Google Sheet للمدير العام (حضور كل المحلات)</h3>
-          <p class="muted">ضع رابط Google Apps Script الخاص بك هنا. أي تسجيل حضور أو انصراف من أي محل سيصلك فوراً في هذا الشيت.</p>
-          <label>رابط Google Apps Script لشيت المدير العام</label>
+          <h3>📊 ربط Google Sheet للمدير العام</h3>
+          <p class="muted">أي تسجيل حضور أو انصراف من أي محل سيصلك فوراً في هذا الشيت المركزي.</p>
           <input id="master-sheet-url" value="${esc(shopsRegistry.masterSheetUrl||'')}" placeholder="https://script.google.com/macros/s/.../exec">
           <button class="btn btn-brass" onclick="saveMasterSheetUrl()">حفظ رابط شيت المدير العام</button>
         </div>
@@ -529,13 +930,15 @@ function viewShopSelect(){
     }
   }
   return `<div class="login-wrap">
-    <div class="card" style="text-align:center; border-top-color:var(--brass);">
-      <img src="${LOGO}" alt="شعار" style="height:80px; width:auto; margin-bottom:8px;">
-      <h1 class="serif" style="margin:0;">دفتر تقييم وأجور المتعاونين</h1>
-      <p class="muted">اختر المحل</p>
+    <div class="card" style="text-align:center;">
+      <img src="${LOGO}" alt="شعار" style="height:85px; width:auto; margin-bottom:10px;">
+      <h1 class="serif" style="margin:0; font-size:28px;">دفتر تقييم وأجور المتعاونين</h1>
+      <p class="muted">اختر المحل للدخول أو إدارة الحضور والأجور</p>
     </div>
     <div class="card">
-      ${list.map(s=>`<button class="btn btn-brass" style="width:100%; margin-bottom:10px;" onclick="selectShop('${s.id}')">${esc(s.name)}</button>`).join('') || '<p class="empty">لا يوجد محلات بعد</p>'}
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${list.map(s=>`<button class="btn btn-brass" style="padding:12px 18px; font-size:16px; justify-content:space-between;" onclick="selectShop('${s.id}')"><span>🏢 ${esc(s.name)}</span> <span>←</span></button>`).join('') || '<p class="empty">لا يوجد محلات بعد</p>'}
+      </div>
     </div>
     <div style="text-align:center; margin-bottom:10px;">
       <button class="btn btn-outline btn-sm" onclick="state.shopAdminOpen=!state.shopAdminOpen; render();">⚙️ إدارة المحلات (إضافة/حذف/شيت المدير)</button>
@@ -543,6 +946,7 @@ function viewShopSelect(){
     ${adminPanel}
   </div>`;
 }
+
 function selectShop(id){
   state.shopId = id;
   state.screen = 'loading';
@@ -551,60 +955,60 @@ function selectShop(id){
 }
 async function setMasterPin(){
   const pin = document.getElementById('admin-pin-new').value.trim();
-  if(!pin){ alert('أدخل رمزاً'); return; }
+  if(!pin){ showToast('أدخل رمزاً صحيحاً', 'warning'); return; }
   shopsRegistry.masterPin = pin;
-  try{ await fbSetRaw('shopsRegistry', shopsRegistry); }catch(e){ alert('تعذر الحفظ، تحقق من الاتصال بالإنترنت.'); return; }
+  try{ await fbSetRaw('shopsRegistry', shopsRegistry); }catch(e){ showToast('تعذر الحفظ، تحقق من الإنترنت', 'error'); return; }
   state.shopAdminAuthed = true;
+  showToast('تم ضبط رمز الإدارة بنجاح', 'success');
   render();
 }
 function checkMasterPin(){
   const pin = document.getElementById('admin-pin-check').value.trim();
   if(pin === shopsRegistry.masterPin){ state.shopAdminAuthed = true; render(); }
-  else alert('رمز خاطئ');
+  else showToast('رمز الدخول خاطئ', 'error');
 }
 async function saveMasterSheetUrl(){
   const url = document.getElementById('master-sheet-url').value.trim();
   shopsRegistry.masterSheetUrl = url;
   try{
     await fbSetRaw('shopsRegistry', shopsRegistry);
-    alert('تم حفظ رابط شيت المدير العام بنجاح!');
+    showToast('تم حفظ رابط شيت المدير العام بنجاح!', 'success');
   }catch(e){
-    alert('تعذر الحفظ، تحقق من الاتصال بالإنترنت.');
+    showToast('تعذر الحفظ، تحقق من الإنترنت', 'error');
   }
 }
 async function addShop(){
   const name = document.getElementById('new-shop-name').value.trim();
   const id = document.getElementById('new-shop-id').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
-  if(!name || !id){ alert('أدخل الاسم والمعرف (المعرف حروف إنجليزية وأرقام فقط)'); return; }
-  if(shopsRegistry.shops.find(s=>s.id===id)){ alert('هذا المعرف مستخدم من قبل، اختر معرفاً آخر'); return; }
+  if(!name || !id){ showToast('أدخل الاسم والمعرف باللغة الإنجليزية', 'warning'); return; }
+  if(shopsRegistry.shops.find(s=>s.id===id)){ showToast('هذا المعرف مستخدم من قبل', 'warning'); return; }
   shopsRegistry.shops.push({ id, name });
-  try{ await fbSetRaw('shopsRegistry', shopsRegistry); }catch(e){ alert('تعذر الحفظ، تحقق من الاتصال بالإنترنت.'); return; }
+  try{ await fbSetRaw('shopsRegistry', shopsRegistry); showToast('تمت إضافة المحل بنجاح', 'success'); }
+  catch(e){ showToast('تعذر الحفظ', 'error'); }
   render();
 }
 async function addSupervisorToShop(shopId){
   const name = document.getElementById(`admin-sup-name-${shopId}`).value.trim();
   const pin = document.getElementById(`admin-sup-pin-${shopId}`).value.trim();
-  if(!name || !pin){ alert('أدخل الاسم والرمز'); return; }
+  if(!name || !pin){ showToast('أدخل الاسم والرمز', 'warning'); return; }
   let cfg;
-  try{ cfg = await fbGetForShop(shopId, KEYS.config); }
-  catch(e){ alert('تعذر الوصول لبيانات هذا المحل، تحقق من الاتصال بالإنترنت.'); return; }
-  if(!cfg){ alert('هذا المحل لم يُعدّ بعد (لم يُنشأ من صاحبه لأول مرة)، لا يمكن إضافة مشرف له حالياً.'); return; }
+  try{ cfg = await fbGetForShop(shopId, KEYS.config); }catch(e){ showToast('تعذر الوصول للمحل', 'error'); return; }
+  if(!cfg){ showToast('هذا المحل لم يُهيأ بعد من صاحبه', 'warning'); return; }
   cfg.supervisors = cfg.supervisors || [];
   cfg.supervisors.push({ id:uid(), name, pin });
-  try{ await fbSetForShop(shopId, KEYS.config, cfg); }
-  catch(e){ alert('تعذر الحفظ، تحقق من الاتصال بالإنترنت.'); return; }
+  try{ await fbSetForShop(shopId, KEYS.config, cfg); }catch(e){ showToast('تعذر الحفظ', 'error'); return; }
   state.adminAddSupShopId = null;
-  alert(`تمت إضافة المشرف "${name}" لهذا المحل بنجاح.`);
+  showToast(`تمت إضافة المشرف "${name}" لهذا المحل`, 'success');
   render();
 }
 async function deleteShop(id){
   shopsRegistry.shops = shopsRegistry.shops.filter(s=>s.id!==id);
   state.shopAdminConfirmDeleteId = null;
-  try{ await fbSetRaw('shopsRegistry', shopsRegistry); }catch(e){ alert('تعذر الحفظ، تحقق من الاتصال بالإنترنت.'); }
+  try{ await fbSetRaw('shopsRegistry', shopsRegistry); showToast('تم حذف المحل', 'info'); }catch(e){ showToast('تعذر الحذف', 'error'); }
   render();
 }
 
-/* ------ نظرة عامة على كل المحلات ------ */
+/* ------ نظرة عامة على كل المحلات للمدير العام ------ */
 async function loadAllShopsOverview(month){
   const savedConfig=config, savedWorkers=workers, savedAttendance=attendance, savedMonthly=monthly, savedPayments=payments, savedShopId=state.shopId;
   const results = [];
@@ -635,7 +1039,7 @@ async function loadAllShopsOverview(month){
 }
 async function openAllShopsOverview(){
   state.screen='loading';
-  document.getElementById('app').innerHTML = '<div class="empty">جارِ تحميل بيانات كل المحلات...</div>';
+  document.getElementById('app').innerHTML = '<div class="empty">جارِ استرجاع بيانات كل المحلات...</div>';
   const month = curMonth();
   state.allShopsMonth = month;
   state.allShopsData = await loadAllShopsOverview(month);
@@ -646,19 +1050,29 @@ function viewAllShopsOverview(){
   const rows = state.allShopsData.map(r=>{
     if(r.notSetup) return `<tr><td><b>${esc(r.name)}</b></td><td colspan="4" class="muted">لم يُعدّ بعد</td></tr>`;
     if(r.error) return `<tr><td><b>${esc(r.name)}</b></td><td colspan="4" class="muted">تعذر التحميل</td></tr>`;
-    return `<tr><td><b>${esc(r.name)}</b></td><td>${r.workerCount}</td><td class="amt">${fmt(r.totalWage)} دج</td><td class="${r.totalLate>0?'neg':''}">${r.totalLate}</td><td>${r.latePct}%</td></tr>`;
+    return `<tr>
+      <td><b>${esc(r.name)}</b></td>
+      <td>${r.workerCount}</td>
+      <td class="amt">${fmt(r.totalWage)} دج</td>
+      <td class="${r.totalLate>0?'neg':''}">${r.totalLate}</td>
+      <td>${r.latePct}%</td>
+    </tr>`;
   }).join('');
   const grandTotal = state.allShopsData.reduce((s,r)=>s+(r.totalWage||0),0);
   const grandWorkers = state.allShopsData.reduce((s,r)=>s+(r.workerCount||0),0);
-  return `<div class="login-wrap" style="max-width:760px;">
+  return `<div class="login-wrap" style="max-width:850px;">
     <div class="card">
-      <h2>نظرة عامة على كل المحلات — ${state.allShopsMonth}</h2>
-      <table class="ledger">
-        <thead><tr><th>المحل</th><th>عدد المتعاونين</th><th>إجمالي الأجور</th><th>عدد التأخيرات</th><th>نسبة التأخر</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="5" class="empty">لا يوجد محلات</td></tr>`}</tbody>
-        <tfoot><tr class="total-row"><td>الإجمالي العام</td><td>${grandWorkers}</td><td class="amt">${fmt(grandTotal)} دج</td><td colspan="2"></td></tr></tfoot>
-      </table>
-      <button class="btn btn-outline" style="margin-top:14px;" onclick="backToShopSelect()">رجوع لاختيار المحل</button>
+      <div class="card-header">
+        <h2>نظرة عامة على كل المحلات — ${state.allShopsMonth}</h2>
+        <button class="btn btn-outline btn-sm" onclick="backToShopSelect()">رجوع لاختيار المحل</button>
+      </div>
+      <div class="table-responsive">
+        <table class="ledger">
+          <thead><tr><th>المحل</th><th>عدد المتعاونين</th><th>إجمالي الأجور</th><th>عدد التأخيرات</th><th>نسبة التأخر</th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="5" class="empty">لا يوجد محلات</td></tr>`}</tbody>
+          <tfoot><tr class="total-row"><td>الإجمالي العام</td><td>${grandWorkers}</td><td class="amt">${fmt(grandTotal)} دج</td><td colspan="2"></td></tr></tfoot>
+        </table>
+      </div>
     </div>
   </div>`;
 }
@@ -667,23 +1081,26 @@ function viewAllShopsOverview(){
 function viewSetup(){
   const shopLabel = (shopsRegistry.shops.find(s=>s.id===state.shopId)||{}).name || '';
   return `<div class="login-wrap"><div class="card">
-    <img src="${LOGO}" alt="شعار المحل" style="height:70px; width:auto; margin-bottom:10px;"><h2 class="serif">إعداد ${esc(shopLabel)} لأول مرة</h2>
-    <p class="muted">هذه الخطوة تُنشئ بيانات هذا المحل ورمز دخول صاحبه. البيانات مستقلة تماماً عن باقي المحلات.</p>
+    <div style="text-align:center;">
+      <img src="${LOGO}" alt="شعار المحل" style="height:75px; width:auto; margin-bottom:10px;">
+      <h2 class="serif" style="margin:0 0 6px;">إعداد ${esc(shopLabel)} لأول مرة</h2>
+      <p class="muted">هذه الخطوة تُنشئ قاعدة بيانات هذا الفرع ورمز الدخول الخاص بصاحب المحل.</p>
+    </div>
     <label>اسم المحل</label><input id="su-shop" value="${esc(shopLabel)}">
     <label>رمز دخول صاحب المحل (4 أرقام)</label><input id="su-pin" placeholder="0000" maxlength="6">
-    <button class="btn btn-brass" onclick="doSetup()">إنشاء وبدء الاستخدام</button>
-    <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="backToShopSelect()">تبديل المحل</button>
+    <button class="btn btn-brass" style="width:100%; margin-top:8px;" onclick="doSetup()">إنشاء وبدء الاستخدام</button>
+    <button class="btn btn-outline btn-sm" style="width:100%; margin-top:10px;" onclick="backToShopSelect()">تبديل المحل</button>
   </div></div>`;
 }
 function doSetup(){
   const shop=document.getElementById('su-shop').value.trim();
   const pin=document.getElementById('su-pin').value.trim();
-  if(!shop||!pin){ alert('أدخل اسم المحل ورمز الدخول'); return; }
+  if(!shop||!pin){ showToast('أدخل اسم المحل ورمز الدخول', 'warning'); return; }
   config = { shopName:shop, ownerPin:pin, expectedMonthDays:30, baseSalary:20000, evalBonusPool:8000, liveRate:500,
     workdayHours:6.5, paydayDay:6, shopPublicIP:'', sheetsWebhookUrl:'', shiftSplitTime:'14:30',
     morningShiftStart:'08:00', lateThresholdMinutes:10, lateCountForAbsence:5,
     shopMapLink:'', shopLat:null, shopLng:null, geofenceRadius:150, autoSyncSheet:false, paidLeaveQuotaPerYear:10, supervisors:[] };
-  saveConfig(); state.screen='login'; render();
+  saveConfig(); state.screen='login'; showToast('تم تجهيز المحل بنجاح', 'success'); render();
 }
 
 /* ================= LOGIN ================= */
@@ -691,31 +1108,33 @@ function viewLogin(){
   const role = state.loginRole || 'owner';
   let body='';
   if(role==='owner'){
-    body = `<label>رمز دخول صاحب المحل</label><input id="lg-pin" placeholder="••••" maxlength="6">
-      <button class="btn btn-brass" style="width:100%" onclick="doLoginOwner()">دخول</button>`;
+    body = `<label>رمز دخول صاحب المحل</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6">
+      <button class="btn btn-brass" style="width:100%" onclick="doLoginOwner()">دخول للنظام</button>`;
   } else if(role==='supervisor'){
-    if(!config.supervisors.length){ body = `<p class="empty">لا يوجد مشرفون بعد. يجب على صاحب المحل إضافتهم أولاً.</p>`; }
+    if(!config.supervisors.length){ body = `<p class="empty">لا يوجد مشرفون مسجلون بعد. يجب على صاحب المحل إضافتهم أولاً.</p>`; }
     else {
       body = `<label>اختر اسمك</label><select id="lg-sup">${config.supervisors.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
-      <label>رمز الدخول</label><input id="lg-pin" placeholder="••••" maxlength="6">
-      <button class="btn btn-brass" style="width:100%" onclick="doLoginSupervisor()">دخول</button>`;
+      <label>رمز الدخول</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6">
+      <button class="btn btn-brass" style="width:100%" onclick="doLoginSupervisor()">دخول المسؤول</button>`;
     }
   } else {
-    if(!workers.length){ body = `<p class="empty">لا يوجد متعاونين مسجلون بعد. يجب على صاحب المحل إضافتهم أولاً.</p>`; }
+    if(!workers.length){ body = `<p class="empty">لا يوجد متعاونين بعد. يجب على صاحب المحل إضافتهم أولاً.</p>`; }
     else {
       body = `<label>اختر اسمك</label><select id="lg-w">${workers.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('')}</select>
-      <label>رمز الدخول</label><input id="lg-pin" placeholder="••••" maxlength="6">
-      <button class="btn btn-brass" style="width:100%" onclick="doLoginWorker()">دخول</button>`;
+      <label>رمز الدخول</label><input id="lg-pin" type="password" placeholder="••••" maxlength="6">
+      <button class="btn btn-brass" style="width:100%" onclick="doLoginWorker()">دخول المتعاون</button>`;
     }
   }
   return `<div class="login-wrap">
-    <div class="card" style="text-align:center; border-top-color:var(--brass);">
-      <img src="${LOGO}" alt="شعار المحل" style="height:80px; width:auto; margin-bottom:8px;">
+    <div class="card" style="text-align:center;">
+      <img src="${LOGO}" alt="شعار المحل" style="height:85px; width:auto; margin-bottom:8px;">
       <h1 class="serif" style="margin:0;">${esc(config.shopName)}</h1>
-      <p class="muted">دفتر تقييم وأجور المتعاونين</p>
+      <p class="muted" style="margin-bottom:12px;">دفتر تقييم وأجور المتعاونين</p>
       ${config.shopMapLink?`<p><a href="${esc(config.shopMapLink)}" target="_blank" style="color:var(--brass); text-decoration:none; font-weight:700;">📍 موقع المحل على الخريطة</a></p>`:''}
-      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="copyShopLink()">🔗 نسخ رابط هذا المحل</button>
-      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="backToShopSelect()">تبديل المحل</button>
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
+        <button class="btn btn-outline btn-sm" onclick="copyShopLink()">🔗 نسخ رابط المحل</button>
+        <button class="btn btn-outline btn-sm" onclick="backToShopSelect()">تبديل المحل</button>
+      </div>
     </div>
     <div class="role-tabs">
       <button class="tab ${role==='owner'?'active':''}" onclick="setLoginRole('owner')">صاحب المحل</button>
@@ -728,19 +1147,19 @@ function viewLogin(){
 function setLoginRole(r){ state.loginRole=r; render(); }
 function doLoginOwner(){
   const pin=document.getElementById('lg-pin').value.trim();
-  if(pin===config.ownerPin){ state.session={role:'owner', name:'صاحب المحل'}; state.screen='owner'; state.tab='overview'; render(); }
-  else alert('رمز خاطئ');
+  if(pin===config.ownerPin){ state.session={role:'owner', name:'صاحب المحل'}; state.screen='owner'; state.tab='overview'; showToast('مرحباً بك مجدداً يا صاحب المحل', 'success'); render(); }
+  else showToast('رمز الدخول خاطئ', 'error');
 }
 function doLoginSupervisor(){
   const id=document.getElementById('lg-sup').value, pin=document.getElementById('lg-pin').value.trim();
   const s=config.supervisors.find(x=>x.id===id);
-  if(s&&pin===s.pin){ state.session={role:'supervisor', id:s.id, name:s.name}; state.screen='supervisor'; state.tab='selfcheckin'; render(); }
-  else alert('رمز خاطئ');
+  if(s&&pin===s.pin){ state.session={role:'supervisor', id:s.id, name:s.name}; state.screen='supervisor'; state.tab='selfcheckin'; showToast(`أهلاً بك ${s.name}`, 'success'); render(); }
+  else showToast('رمز الدخول خاطئ', 'error');
 }
 async function doLoginWorker(){
   const id=document.getElementById('lg-w').value, pin=document.getElementById('lg-pin').value.trim();
   const w=workers.find(x=>x.id===id);
-  if(!(w&&pin===w.pin)){ alert('رمز خاطئ'); return; }
+  if(!(w&&pin===w.pin)){ showToast('رمز الدخول خاطئ', 'error'); return; }
 
   let freshWorkers;
   try{ freshWorkers = (await fbGet(KEYS.workers)) || workers; }catch(e){ freshWorkers = workers; }
@@ -748,19 +1167,21 @@ async function doLoginWorker(){
   const fw = freshWorkers[idx];
   const deviceId = getDeviceId();
   if(fw && fw.lockedDeviceId && fw.lockedDeviceId !== deviceId && !fw.deviceLockDisabled){
-    alert('هذا الرمز مرتبط بجهاز آخر. إذا بدّلت هاتفك، اطلب من صاحب المحل يعيد ربط جهازك من تبويب "المتعاونين".');
+    showToast('هذا الرمز مقفل على جهاز آخر. اطلب من الإدارة إعادة ربط جهازك', 'error', 5000);
     return;
   }
   if(fw && !fw.lockedDeviceId && !fw.deviceLockDisabled){
     fw.lockedDeviceId = deviceId;
     let ok2=false;
-    try{ await fbSetPath(`${KEYS.workers}/${idx}/lockedDeviceId`, deviceId); ok2=true; }catch(e){ console.error('scoped lock write failed', e); }
-    if(!ok2){ try{ await fbSet(KEYS.workers, freshWorkers); }catch(e2){ console.error('fallback full write failed too', e2); } }
+    try{ await fbSetPath(`${KEYS.workers}/${idx}/lockedDeviceId`, deviceId); ok2=true; }catch(e){}
+    if(!ok2){ try{ await fbSet(KEYS.workers, freshWorkers); }catch(e2){} }
   }
   workers = freshWorkers;
-  state.session={role:'worker', id:w.id, name:w.name}; state.screen='worker'; state.tab='checkin'; render();
+  state.session={role:'worker', id:w.id, name:w.name}; state.screen='worker'; state.tab='checkin';
+  showToast(`أهلاً بك ${w.name}`, 'success');
+  render();
 }
-function logout(){ state.session=null; state.loginRole=null; state.screen='login'; state.detailWorkerId=null; render(); }
+function logout(){ state.session=null; state.loginRole=null; state.screen='login'; state.detailWorkerId=null; showToast('تم تسجيل الخروج', 'info'); render(); }
 function backToShopSelect(){ state.shopId=null; state.session=null; state.loginRole=null; state.screen='shopselect'; state.shopAdminOpen=false; state.shopAdminAuthed=false; render(); }
 async function copyShopLink(){
   const url = new URL(window.location.href);
@@ -769,35 +1190,45 @@ async function copyShopLink(){
   const link = url.toString();
   try{
     await navigator.clipboard.writeText(link);
-    alert('تم نسخ الرابط:\n' + link + '\nأرسله للمتعاونين، ويقدروا يضيفوه لشاشة هاتفهم الرئيسية.');
+    showToast('تم نسخ رابط المحل للحافظة 📋', 'success');
   }catch(e){
-    alert('انسخ هذا الرابط يدوياً:\n' + link);
+    prompt('انسخ هذا الرابط يدوياً:', link);
   }
 }
 
-/* ================= SHARED ================= */
+/* ================= SHARED UI ================= */
 function brandbar(){
   return `<div class="brandbar">
     <div style="display:flex; align-items:center; gap:12px;">
-      <img src="${LOGO}" alt="شعار المحل" style="height:44px; width:auto; background:#fff; border-radius:6px; padding:3px;">
+      <img src="${LOGO}" alt="شعار المحل" style="height:44px; width:auto; background:#fff; border-radius:8px; padding:3px;">
       <div><h1>${esc(config.shopName)}</h1><div class="sub">دفتر تقييم وأجور المتعاونين</div></div>
     </div>
-    <div class="who" style="display:flex; align-items:center; gap:10px;">
-      <button class="btn btn-outline btn-sm" style="color:#fff; border-color:#fff;" onclick="refreshData()">🔄 تحديث البيانات</button>
-      مسجّل الدخول: <b>${esc(state.session.name)}</b>
+    <div class="who">
+      <button class="btn btn-outline btn-sm" style="color:#fff; border-color:rgba(255,255,255,0.3);" onclick="refreshData()">🔄 تحديث</button>
+      <span>مسجّل الدخول: <b>${esc(state.session.name)}</b></span>
     </div>
   </div>`;
 }
+
 async function refreshData(){
   const t = state.tab, s = state.screen, sess = state.session, m = state.month;
   await loadAll();
   state.tab=t; state.screen=s; state.session=sess; state.month=m;
+  showToast('تم تحديث البيانات من السيرفر', 'success');
   render();
 }
-function monthPicker(){ return `<input type="month" value="${state.month}" onchange="state.month=this.value; render();" style="max-width:200px;">`; }
+
+function monthPicker(){
+  return `<input type="month" value="${state.month}" onchange="state.month=this.value; render();" style="max-width:180px; margin-bottom:0;">`;
+}
 
 function wageTable(month, editable){
-  const rows = workers.map(w=>{
+  const filteredWorkers = workers.filter(w => {
+    if(!state.searchWorkerText) return true;
+    return w.name.toLowerCase().includes(state.searchWorkerText.toLowerCase());
+  });
+
+  const rows = filteredWorkers.map(w=>{
     const c = calcWage(w.id, month);
     const paid = isPaid(w.id, month);
     const statusCell = editable
@@ -806,92 +1237,142 @@ function wageTable(month, editable){
     return `<tr>
       <td><b>${esc(w.name)}</b></td>
       <td><span class="badge ${c.absence===0?'badge-present':'badge-open'}">${c.present}/${c.expected}</span></td>
-      <td>${c.evalTotal}/100</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span>${c.evalTotal}/100</span>
+          <div class="score-bar"><div class="score-bar-fill" style="width:${Math.min(c.evalTotal, 100)}%;"></div></div>
+        </div>
+      </td>
       <td class="amt">${fmt(c.rounded)} دج</td>
       <td>${statusCell}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="toggleDetail('${w.id}')">${state.detailWorkerId===w.id?'إخفاء':'التفاصيل'}</button></td>
+      <td style="display:flex; gap:4px;">
+        <button class="btn btn-outline btn-sm" onclick="toggleDetail('${w.id}')">${state.detailWorkerId===w.id?'إخفاء':'التفاصيل'}</button>
+        <button class="btn btn-outline btn-sm" onclick="printPayslip('${w.id}','${month}')" title="طباعة وصل الراتب">🖨️ وصل</button>
+      </td>
     </tr>
-    ${state.detailWorkerId===w.id ? `<tr><td colspan="6">${wageDetailCard(w.id, month, paid)}</td></tr>` : ''}`;
+    ${state.detailWorkerId===w.id ? `<tr><td colspan="6" style="padding:0;">${wageDetailCard(w.id, month, paid)}</td></tr>` : ''}`;
   }).join('');
-  const grand = workers.reduce((s,w)=>s+calcWage(w.id,month).rounded,0);
-  return `<table class="ledger">
-    <thead><tr><th>المتعاون</th><th>الحضور</th><th>التقييم</th><th>الإجمالي</th><th>الصرف</th><th></th></tr></thead>
-    <tbody>${rows || `<tr><td colspan="6" class="empty">لا يوجد متعاونين بعد</td></tr>`}</tbody>
-    <tfoot><tr class="total-row"><td colspan="3">الإجمالي العام</td><td class="amt">${fmt(grand)} دج</td><td colspan="2"></td></tr></tfoot>
-  </table>`;
+  
+  const grand = filteredWorkers.reduce((s,w)=>s+calcWage(w.id,month).rounded,0);
+  const paidCount = filteredWorkers.filter(w=>isPaid(w.id, month)).length;
+
+  return `
+  <div class="stats-grid">
+    <div class="stat-card forest">
+      <span class="stat-title">إجمالي أجور هذا الشهر</span>
+      <span class="stat-val amt">${fmt(grand)} دج</span>
+      <span class="stat-sub">${filteredWorkers.length} متعاونين مسجلين</span>
+    </div>
+    <div class="stat-card ink">
+      <span class="stat-title">حالة الصرف</span>
+      <span class="stat-val">${paidCount} / ${filteredWorkers.length}</span>
+      <span class="stat-sub">${filteredWorkers.length - paidCount} في انتظار الصرف</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="ledger">
+      <thead><tr><th>المتعاون</th><th>الحضور</th><th>التقييم</th><th>الإجمالي</th><th>الصرف</th><th>الإجراءات</th></tr></thead>
+      <tbody>${rows || `<tr><td colspan="6" class="empty">لا يوجد متعاونين مطابقين</td></tr>`}</tbody>
+      <tfoot><tr class="total-row"><td colspan="3">الإجمالي العام المستحق</td><td class="amt">${fmt(grand)} دج</td><td colspan="2"></td></tr></tfoot>
+    </table>
+  </div>`;
 }
+
 function toggleDetail(id){ state.detailWorkerId = state.detailWorkerId===id? null : id; render(); }
+
 function wageDetailCard(workerId, month, paid){
   const c = calcWage(workerId, month);
   const canEdit = state.session && state.session.role!=='worker';
-  return `<div class="card" style="margin:8px 0 0; border-top-color:var(--forest);">
+  return `<div class="card" style="margin:10px; border: 1.5px solid var(--brass-light); background: #FFFDF8;">
     <div class="stamp">${paid?'مصروف<br>✓':'قيد<br>الانتظار'}</div>
-    <h3>تفاصيل أجرة ${esc(c.w.name)} — ${month}</h3>
-    <table class="ledger">
-      <tr><td>الراتب الأساسي المعتمد لهذا المتعاون</td><td>${fmt(c.baseSalary)} دج</td></tr>
-      <tr><td>أيام الحضور</td><td>${c.present} من ${c.expected}</td></tr>
-      <tr><td>أيام الغياب (الفعلية)</td><td>${c.autoAbsence}</td></tr>
-      <tr><td>غياب مبرر (لا يُخصم)</td><td>${c.excusedAbsence}</td></tr>
-      <tr><td>عطلة مدفوعة الأجر (لا تُخصم)</td><td>${c.paidLeaveDays}</td></tr>
-      <tr><td>${Number(config.lateThresholdMinutes)===0?'عدد مرات التأخر (خاصية التأخر معطّلة)':`عدد مرات التأخر (أكثر من ${config.lateThresholdMinutes ?? 10} د)`}</td><td class="${c.lateCount>0?'neg':''}">${c.lateCount}</td></tr>
-      <tr><td>غياب ناتج عن التأخر (كل ${config.lateCountForAbsence||5} تأخيرات = يوم)</td><td class="${c.lateAbsenceDays>0?'neg':''}">${c.lateAbsenceDays}</td></tr>
-      <tr><td>الغياب المحتسب في الأجرة</td><td class="${c.absence>0?'neg':''}">${c.absence}</td></tr>
-      <tr><td>الأيام الإضافية</td><td>${c.rec.extraDays||0}</td></tr>
-      <tr><td>سعر عمل اليوم الواحد</td><td>${fmt(c.dayRate)} دج</td></tr>
-      <tr><td>الراتب الخام (بعد تعديل الحضور)</td><td>${fmt(c.grossSalary)} دج</td></tr>
-      <tr><td>نقاط المبيعات</td><td>${c.rec.salesScore||0}/50</td></tr>
-      <tr><td>نقاط الميديا</td><td>${c.rec.mediaScore||0}/50</td></tr>
-      <tr><td>مجموع التقييم</td><td>${c.evalTotal}/100</td></tr>
-      <tr><td>مكافأة التقييم</td><td>${fmt(c.bonus)} دج</td></tr>
-      <tr><td>اللايف (${c.rec.liveCount||0} × ${c.liveRate})</td><td>${fmt(c.livePay)} دج</td></tr>
-      <tr><td>الساعات الإضافية (${c.rec.overtimeHours||0} س)</td><td>${fmt(c.overtimePay)} دج</td></tr>
-      <tr><td>النقل</td><td>${fmt(c.transport)} دج</td></tr>
-      <tr class="total-row"><td>الإجمالي (مقرّب)</td><td class="amt">${fmt(c.rounded)} دج</td></tr>
-    </table>
-    ${c.rec.note?`<p class="muted" style="margin-top:10px;">ملاحظة: ${esc(c.rec.note)}</p>`:''}
-    ${canEdit?`<button class="btn btn-brass btn-sm" style="margin-top:12px;" onclick="jumpToEdit('${workerId}','${month}')">تعديل القيم الشهرية لهذا المتعاون</button>`:''}
+    <div class="card-header">
+      <h3 style="margin:0;">تفاصيل حساب أجرة: <b>${esc(c.w.name)}</b> (${month})</h3>
+      <button class="btn btn-outline btn-sm" onclick="printPayslip('${workerId}','${month}')">🖨️ طباعة قسيمة الأجر</button>
+    </div>
+    <div class="table-responsive">
+      <table class="ledger">
+        <tr><td>الراتب الأساسي المعتمد لهذا المتعاون</td><td class="amt">${fmt(c.baseSalary)} دج</td></tr>
+        <tr><td>أيام الحضور</td><td><b>${c.present}</b> من أصل ${c.expected} يوم</td></tr>
+        <tr><td>أيام الغياب الفعلي</td><td>${c.autoAbsence}</td></tr>
+        <tr><td>غياب مبرر (معتمد لا يُخصم)</td><td>${c.excusedAbsence}</td></tr>
+        <tr><td>عطلة مدفوعة الأجر</td><td>${c.paidLeaveDays}</td></tr>
+        <tr><td>${Number(config.lateThresholdMinutes)===0?'عدد مرات التأخر (معطل)':`مرات التأخر (أكثر من ${config.lateThresholdMinutes ?? 10} د)`}</td><td class="${c.lateCount>0?'neg':''}">${c.lateCount}</td></tr>
+        <tr><td>خصم أيام بسبب التأخر (كل ${config.lateCountForAbsence||5} تأخيرات = يوم)</td><td class="${c.lateAbsenceDays>0?'neg':''}">${c.lateAbsenceDays} يوم</td></tr>
+        <tr><td>إجمالي الغياب المحتسب في الأجرة</td><td class="${c.absence>0?'neg':''}">${c.absence} يوم</td></tr>
+        <tr><td>الأيام الإضافية (عمل في يوم الراحة)</td><td>${c.rec.extraDays||0} يوم</td></tr>
+        <tr><td>سعر عمل اليوم الواحد</td><td>${fmt(c.dayRate)} دج</td></tr>
+        <tr><td>الراتب الخام (بعد تسوية الحضور)</td><td><b>${fmt(c.grossSalary)} دج</b></td></tr>
+        <tr><td>نقاط المبيعات</td><td>${c.rec.salesScore||0} / 50</td></tr>
+        <tr><td>نقاط الميديا وصناعة المحتوى</td><td>${c.rec.mediaScore||0} / 50</td></tr>
+        <tr><td>مجموع التقييم العام</td><td><b>${c.evalTotal} / 100</b></td></tr>
+        <tr><td>مكافأة التقييم المستحقة</td><td class="amt">${fmt(c.bonus)} دج</td></tr>
+        <tr><td>مستحقات اللايف (${c.rec.liveCount||0} جلسة × ${c.liveRate} دج)</td><td>${fmt(c.livePay)} دج</td></tr>
+        <tr><td>الساعات الإضافية (${c.rec.overtimeHours||0} س)</td><td>${fmt(c.overtimePay)} دج</td></tr>
+        <tr><td>منحة النقل</td><td>${fmt(c.transport)} دج</td></tr>
+        <tr class="total-row"><td>الإجمالي النهائي المستحق (مقرّب)</td><td class="amt" style="font-size:18px;">${fmt(c.rounded)} دج</td></tr>
+      </table>
+    </div>
+    ${c.rec.note?`<p class="muted" style="margin-top:10px;">📝 ملاحظة: ${esc(c.rec.note)}</p>`:''}
+    ${canEdit?`<button class="btn btn-brass btn-sm" style="margin-top:12px;" onclick="jumpToEdit('${workerId}','${month}')">✏️ تعديل القيم الشهرية لهذا المتعاون</button>`:''}
   </div>`;
 }
+
 function jumpToEdit(workerId, month){ state.editWorkerId=workerId; state.month=month; state.tab='monthly'; state.detailWorkerId=null; render(); }
+
 const RUBRIC = `
-  <details class="rubric-box"><summary>عرض معايير التقييم (مبيعات / ميديا)</summary>
+  <details class="rubric-box"><summary>ℹ️ عرض معايير التقييم الشهري (مبيعات / ميديا)</summary>
   <div class="rubric">
-    <b>حجم المبيعات (من 50):</b>
+    <b>حجم المبيعات والتعامل (من 50):</b>
     <ul>
-      <li>حسن التواصل مع الزبائن (الابتسامة، الترحيب، الاحترام)</li>
-      <li>سرعة التعامل مع الزبائن</li>
-      <li>القدرة على الإقناع والبيع، واقتراح منتجات إضافية</li>
-      <li>المراقبة الدورية لنواقص المحل وتحسين طرق العرض</li>
-      <li>جمع أرقام هواتف الزبائن والترويج للعروض الخاصة</li>
+      <li>حسن التواصل والترحيب بالزبائن والابتسامة</li>
+      <li>السرعة واللباقة في خدمة الزبون والبيع</li>
+      <li>اقتراح منتجات إضافية ومكملة</li>
+      <li>متابعة نواقص المحل ونظافة الواجهات</li>
+      <li>جمع أرقام هواتف الزبائن للعروض الخاصة</li>
     </ul>
-    <b>الميديا (من 50):</b>
+    <b style="display:block; margin-top:8px;">الميديا وصناعة المحتوى (من 50):</b>
     <ul>
-      <li>التصوير والنشر على مواقع التواصل بصور احترافية وريلز</li>
-      <li>المساهمة في طرق التصوير والرد على الرسائل بطريقة تزيد المبيعات</li>
-      <li>اقتراح أفكار جديدة وعروض ترويجية لتحسين المبيعات والخدمات</li>
+      <li>التصوير الاحترافي ونشر الريلز والستوريات</li>
+      <li>المساهمة في الرد السريع على الرسائل لزيادة المبيعات</li>
+      <li>اقتراح أفكار ترويجية وعروض مبتكرة للمحل</li>
     </ul>
   </div></details>`;
 
-/* ================= OWNER ================= */
+/* ================= OWNER VIEW ================= */
 function viewOwner(){
   const pc = pendingRequestsCount();
-  const tabs=[['today','اليوم'],['overview','نظرة عامة'],['monthly','التقييم الشهري'],['requests',`الطلبات${pc?` (${pc})`:''}`],['history','سجل الحضور'],['report','تقرير العمل'],['duty','المسؤوليات اليومية'],['notifications','الإشعارات'],['activity','السجل العام'],['workers','المتعاونين'],['supervisors','المشرفون'],['settings','الإعدادات']];
+  const tabs=[
+    ['today','اليوم'],['overview','ملخص الأجور'],['monthly','التقييم الشهري'],
+    ['requests',`الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
+    ['history','سجل الحضور'],['report','تقرير العمل'],['duty','المسؤوليات اليومية'],
+    ['notifications','الإشعارات'],['activity','السجل العام'],['workers','المتعاونين'],
+    ['supervisors','المشرفون'],['settings','الإعدادات']
+  ];
   let content = state.tab==='workers'?ownerWorkers(): state.tab==='supervisors'?ownerSupervisors(): state.tab==='settings'?ownerSettings(): state.tab==='monthly'?supMonthly(): state.tab==='requests'?reqManage(): state.tab==='history'?attendanceHistory(): state.tab==='activity'?generalActivityLog(): state.tab==='duty'?dutyManage(): state.tab==='notifications'?notificationsManage(): state.tab==='report'?reportManage(): state.tab==='today'?todayDashboard(): ownerOverview();
   return `${brandbar()}<div class="tab-bar">
     ${tabs.map(t=>`<button class="tab ${state.tab===t[0]?'active':''}" onclick="ownerTab('${t[0]}')">${t[1]}</button>`).join('')}
-    <button class="tab" onclick="logout()">خروج</button></div>${content}`;
+    <button class="tab" onclick="logout()" style="color:var(--burgundy-light);">خروج 🚪</button></div>${content}`;
 }
 function ownerTab(t){ state.tab=t; state.detailWorkerId=null; state.editAttendanceId=null; state.confirmDeleteId=null; render(); }
+
 function ownerOverview(){
-  return `${paydayBanner()}${lateWarningBanner(state.month)}<div class="card">
-    <div class="row" style="align-items:center; margin-bottom:10px;">
-      <h2 style="margin:0;">ملخص الأجور</h2>
-      ${monthPicker()}
-      <button class="btn btn-outline btn-sm" onclick="exportToSheet(state.month)">تصدير هذا الشهر إلى Google Sheet</button>
+  return `${paydayBanner()}${lateWarningBanner(state.month)}
+  <div class="card">
+    <div class="card-header">
+      <h2>ملخص أجور المتعاونين</h2>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        ${monthPicker()}
+        <button class="btn btn-forest btn-sm" onclick="exportWagesExcel(state.month)">📊 تصدير Excel (.xlsx)</button>
+        <button class="btn btn-outline btn-sm" onclick="exportToSheet(state.month)">Google Sheet</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <input type="text" placeholder="🔍 بحث عن متعاون بالاسم..." value="${esc(state.searchWorkerText)}" oninput="state.searchWorkerText=this.value; render();" style="max-width:280px; margin-bottom:0;">
     </div>
     ${wageTable(state.month, true)}
   </div>`;
 }
+
 function ownerWorkers(){
   const rows = workers.map(w=>{
     const base = w.baseSalary!=null? w.baseSalary : config.baseSalary;
@@ -905,7 +1386,7 @@ function ownerWorkers(){
           <div><label>مبلغ تقييم 30 يوم (دج)</label><input id="ww-eval-${w.id}" type="number" value="${ev}"></div>
           <div><label>سعر اللايف (دج)</label><input id="ww-live-${w.id}" type="number" value="${live}"></div>
         </div>
-        <div>
+        <div style="display:flex; gap:6px;">
           <button class="btn btn-brass btn-sm" onclick="saveWorkerWage('${w.id}')">حفظ</button>
           <button class="btn btn-outline btn-sm" onclick="state.editWorkerWageId=null; render();">إلغاء</button>
         </div>
@@ -922,27 +1403,33 @@ function ownerWorkers(){
       </div>`;
     }
     return `<div class="list-item">
-    <div><b>${esc(w.name)}</b> <span class="muted">رمز:</span> <span class="pin-tag">${esc(w.pin)}</span>
-      <span class="badge ${w.deviceLockDisabled?'badge-open':(w.lockedDeviceId?'badge-present':'badge-open')}">${w.deviceLockDisabled?'🔓 بدون ربط جهاز':(w.lockedDeviceId?'🔒 مرتبط بجهاز':'غير مرتبط بعد')}</span>
-      <div class="muted" style="margin-top:4px;">راتب: ${fmt(base)} دج — تقييم 30 يوم: ${fmt(ev)} دج — لايف: ${fmt(live)} دج</div>
-    </div>
     <div>
-      <button class="btn btn-outline btn-sm" onclick="state.editWorkerWageId='${w.id}'; render();">تعديل الراتب</button>
-      <button class="btn btn-outline btn-sm" onclick="state.editWorkerPinId='${w.id}'; render();">تعديل الرمز</button>
-      ${!w.deviceLockDisabled && w.lockedDeviceId?`<button class="btn btn-outline btn-sm" onclick="resetDeviceLock('${w.id}')">إعادة ربط الجهاز</button>`:''}
-      <button class="btn btn-outline btn-sm" onclick="toggleDeviceLockRequirement('${w.id}')">${w.deviceLockDisabled?'تفعيل ربط الجهاز':'تعطيل ربط الجهاز (يدخل من أي جهاز)'}</button>
+      <b>${esc(w.name)}</b> <span class="muted">رمز:</span> <span class="pin-tag">${esc(w.pin)}</span>
+      <span class="badge ${w.deviceLockDisabled?'badge-open':(w.lockedDeviceId?'badge-present':'badge-open')}">
+        ${w.deviceLockDisabled?'🔓 دخول حر':(w.lockedDeviceId?'🔒 مرتبط بجهازه':'غير مرتبط بعد')}
+      </span>
+      <div class="muted" style="margin-top:4px;">راتب: ${fmt(base)} دج — تقييم: ${fmt(ev)} دج — لايف: ${fmt(live)} دج</div>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="state.editWorkerWageId='${w.id}'; render();">الأجر</button>
+      <button class="btn btn-outline btn-sm" onclick="state.editWorkerPinId='${w.id}'; render();">الرمز</button>
+      ${!w.deviceLockDisabled && w.lockedDeviceId?`<button class="btn btn-outline btn-sm" onclick="resetDeviceLock('${w.id}')">فك الجهاز</button>`:''}
+      <button class="btn btn-outline btn-sm" onclick="toggleDeviceLockRequirement('${w.id}')">${w.deviceLockDisabled?'تفعيل القفل':'تعطيل القفل'}</button>
       ${state.confirmDeleteId===w.id
-        ? `<span class="muted">متأكد؟</span> <button class="btn btn-danger" onclick="deleteWorker('${w.id}')">نعم، احذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
-        : `<button class="btn btn-danger" onclick="state.confirmDeleteId='${w.id}'; render();">حذف</button>`}
+        ? `<button class="btn btn-danger btn-sm" onclick="deleteWorker('${w.id}')">تأكيد الحذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
+        : `<button class="btn btn-danger btn-sm" onclick="state.confirmDeleteId='${w.id}'; render();">حذف</button>`}
     </div>
   </div>`;
   }).join('');
-  return `<div class="card"><h2>المتعاونين المسجلون</h2>${rows||'<p class="empty">لا يوجد متعاونين بعد، أضف أول متعاون بالأسفل</p>'}
-    <p class="muted" style="margin-top:10px;">رمز الدخول يُربط تلقائياً بأول جهاز يسجّل به المتعاون حضوره، ولا يقدر يسجّل من جهاز آخر بعدها إلا إذا أعدت ربطه من هنا (مثلاً عند تغيير هاتفه).</p>
+
+  return `<div class="card">
+    <h2>المتعاونين المسجلون</h2>
+    ${rows||'<p class="empty">لا يوجد متعاونين بعد، أضف أول متعاون بالأسفل</p>'}
   </div>
-  <div class="card"><h3>إضافة متعاون جديد</h3>
+  <div class="card">
+    <h3>إضافة متعاون جديد</h3>
     <div class="row">
-      <div><label>الاسم</label><input id="w-name" placeholder="اسم المتعاون"></div>
+      <div><label>الاسم الكامل</label><input id="w-name" placeholder="مثال: عبد الرحيم"></div>
       <div><label>رمز الدخول (4 أرقام)</label><input id="w-pin" placeholder="0000" maxlength="6"></div>
     </div>
     <div class="row">
@@ -953,6 +1440,7 @@ function ownerWorkers(){
     <button class="btn btn-brass" onclick="addWorker()">إضافة المتعاون</button>
   </div>`;
 }
+
 async function saveWorkerWage(id){
   const idx = workers.findIndex(x=>x.id===id);
   if(idx<0) return;
@@ -964,62 +1452,70 @@ async function saveWorkerWage(id){
     await fbSetPath(`${KEYS.workers}/${idx}/baseSalary`, base);
     await fbSetPath(`${KEYS.workers}/${idx}/evalBonusPool`, ev);
     await fbSetPath(`${KEYS.workers}/${idx}/liveRate`, live);
+    showToast('تم تحديث أجر المتعاون بنجاح', 'success');
   }catch(e){
-    console.error('scoped wage write failed, falling back', e);
     try{ await fbSet(KEYS.workers, workers); }catch(e2){}
   }
   state.editWorkerWageId=null;
   logActivity(`${state.session.name} عدّل إعدادات أجرة ${workers[idx].name}`);
   render();
 }
+
 async function saveWorkerPin(id){
   const idx = workers.findIndex(x=>x.id===id);
   if(idx<0) return;
   const pin = document.getElementById(`wp-pin-${id}`).value.trim();
-  if(!pin){ alert('أدخل رمزاً صحيحاً'); return; }
+  if(!pin){ showToast('أدخل رمزاً صحيحاً', 'warning'); return; }
   workers[idx].pin = pin;
-  try{ await fbSetPath(`${KEYS.workers}/${idx}/pin`, pin); }
-  catch(e){ console.error('scoped pin write failed, falling back', e); try{ await fbSet(KEYS.workers, workers); }catch(e2){} }
+  try{ await fbSetPath(`${KEYS.workers}/${idx}/pin`, pin); showToast('تم تغيير الرمز بنجاح', 'success'); }
+  catch(e){ try{ await fbSet(KEYS.workers, workers); }catch(e2){} }
   state.editWorkerPinId=null;
   logActivity(`${state.session.name} غيّر رمز دخول ${workers[idx].name}`);
   render();
 }
+
 async function resetDeviceLock(id){
   const idx = workers.findIndex(x=>x.id===id);
   if(idx<0) return;
   workers[idx].lockedDeviceId=null;
-  try{ await fbSetPath(`${KEYS.workers}/${idx}/lockedDeviceId`, null); }
-  catch(e){ console.error('scoped unlock write failed, falling back', e); try{ await fbSet(KEYS.workers, workers); }catch(e2){} }
+  try{ await fbSetPath(`${KEYS.workers}/${idx}/lockedDeviceId`, null); showToast('تم فك ربط الجهاز، يمكنه الدخول من هاتف جديد', 'success'); }
+  catch(e){ try{ await fbSet(KEYS.workers, workers); }catch(e2){} }
   logActivity(`${state.session.name} أعاد ربط جهاز ${workers[idx].name}`);
   render();
 }
+
 async function toggleDeviceLockRequirement(id){
   const idx = workers.findIndex(x=>x.id===id);
   if(idx<0) return;
   const next = !workers[idx].deviceLockDisabled;
   workers[idx].deviceLockDisabled = next;
   if(next){ workers[idx].lockedDeviceId = null; }
-  try{ await fbSetPath(`${KEYS.workers}/${idx}`, workers[idx]); }
-  catch(e){ console.error('scoped device-lock toggle write failed, falling back', e); try{ await fbSet(KEYS.workers, workers); }catch(e2){} }
+  try{ await fbSetPath(`${KEYS.workers}/${idx}`, workers[idx]); showToast(next?'تم تعطيل قفل الجهاز':'تم تفعيل قفل الجهاز', 'info'); }
+  catch(e){ try{ await fbSet(KEYS.workers, workers); }catch(e2){} }
   logActivity(`${state.session.name} ${next?'عطّل':'فعّل'} ربط الجهاز لـ${workers[idx].name}`);
   render();
 }
+
 function addWorker(){
   const name=document.getElementById('w-name').value.trim(), pin=document.getElementById('w-pin').value.trim();
-  if(!name||!pin){ alert('أدخل الاسم ورمز الدخول'); return; }
+  if(!name||!pin){ showToast('أدخل الاسم ورمز الدخول', 'warning'); return; }
   const baseSalary = Number(document.getElementById('w-base').value||config.baseSalary);
   const evalBonusPool = Number(document.getElementById('w-eval').value||config.evalBonusPool);
   const liveRate = Number(document.getElementById('w-live').value||config.liveRate);
   workers.push({ id:uid(), name, pin, baseSalary, evalBonusPool, liveRate }); saveWorkers();
   logActivity(`${state.session.name} أضاف متعاون جديد: ${name}`);
+  showToast(`تمت إضافة المتعاون ${name}`, 'success');
   render();
 }
+
 function deleteWorker(id){
   const w = workers.find(x=>x.id===id);
   workers = workers.filter(w=>w.id!==id); state.confirmDeleteId=null; saveWorkers();
   logActivity(`${state.session.name} حذف متعاون: ${w?w.name:'؟'}`);
+  showToast('تم حذف المتعاون', 'info');
   render();
 }
+
 function ownerSupervisors(){
   const rows = config.supervisors.map(s=>{
     if(state.editSupervisorPinId===s.id){
@@ -1034,15 +1530,15 @@ function ownerSupervisors(){
     }
     return `<div class="list-item">
     <div><b>${esc(s.name)}</b> <span class="muted">رمز:</span> <span class="pin-tag">${esc(s.pin)}</span></div>
-    <div>
+    <div style="display:flex; gap:6px;">
       <button class="btn btn-outline btn-sm" onclick="state.editSupervisorPinId='${s.id}'; render();">تعديل الرمز</button>
       ${state.confirmDeleteId===s.id
-        ? `<span class="muted">متأكد؟</span> <button class="btn btn-danger" onclick="deleteSupervisor('${s.id}')">نعم، احذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
-        : `<button class="btn btn-danger" onclick="state.confirmDeleteId='${s.id}'; render();">حذف</button>`}
+        ? `<button class="btn btn-danger btn-sm" onclick="deleteSupervisor('${s.id}')">تأكيد الحذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
+        : `<button class="btn btn-danger btn-sm" onclick="state.confirmDeleteId='${s.id}'; render();">حذف</button>`}
     </div>
   </div>`;
   }).join('');
-  return `<div class="card"><h2>المشرفون</h2>${rows||'<p class="empty">لا يوجد مشرفون بعد</p>'}</div>
+  return `<div class="card"><h2>المشرفون والمسؤولون</h2>${rows||'<p class="empty">لا يوجد مشرفون بعد</p>'}</div>
   <div class="card"><h3>إضافة مشرف جديد</h3>
     <div class="row">
       <div><label>الاسم</label><input id="s-name" placeholder="اسم المشرف"></div>
@@ -1051,94 +1547,108 @@ function ownerSupervisors(){
     <button class="btn btn-brass" onclick="addSupervisor()">إضافة المشرف</button>
   </div>`;
 }
+
 async function saveSupervisorPin(id){
   const s = config.supervisors.find(x=>x.id===id);
   if(!s) return;
   const pin = document.getElementById(`sp-pin-${id}`).value.trim();
-  if(!pin){ alert('أدخل رمزاً صحيحاً'); return; }
+  if(!pin){ showToast('أدخل رمزاً صحيحاً', 'warning'); return; }
   s.pin = pin;
-  try{ await fbSet(KEYS.config, config); }catch(e){ alert('تعذر الحفظ، تحقق من الاتصال بالإنترنت.'); return; }
+  try{ await fbSet(KEYS.config, config); showToast('تم تحديث رمز المشرف بنجاح', 'success'); }
+  catch(e){ showToast('تعذر الحفظ', 'error'); return; }
   state.editSupervisorPinId=null;
   logActivity(`${state.session.name} غيّر رمز دخول المشرف ${s.name}`);
   render();
 }
+
 function addSupervisor(){
   const name=document.getElementById('s-name').value.trim(), pin=document.getElementById('s-pin').value.trim();
-  if(!name||!pin){ alert('أدخل الاسم والرمز'); return; }
+  if(!name||!pin){ showToast('أدخل الاسم والرمز', 'warning'); return; }
   config.supervisors.push({ id:uid(), name, pin }); saveConfig();
   logActivity(`${state.session.name} أضاف مشرف جديد: ${name}`);
+  showToast(`تمت إضافة المشرف ${name}`, 'success');
   render();
 }
+
 function deleteSupervisor(id){
   const s = config.supervisors.find(x=>x.id===id);
   config.supervisors=config.supervisors.filter(s=>s.id!==id); state.confirmDeleteId=null; saveConfig();
   logActivity(`${state.session.name} حذف مشرف: ${s?s.name:'؟'}`);
+  showToast('تم حذف المشرف', 'info');
   render();
 }
+
 function ownerSettings(){
-  return `<div class="card"><h2>القيم الافتراضية عند إضافة متعاون جديد</h2>
+  return `<div class="card">
+    <h2>الإعدادات العامة وحساب الأجور</h2>
     <div class="row">
-      <div><label>الراتب الأساسي الشهري (دج)</label><input id="cfg-base" type="number" value="${config.baseSalary}"></div>
-      <div><label>مبلغ تقييم 30 يوم (دج)</label><input id="cfg-eval" type="number" value="${config.evalBonusPool}"></div>
+      <div><label>الراتب الأساسي الافتراضي (دج)</label><input id="cfg-base" type="number" value="${config.baseSalary}"></div>
+      <div><label>مبلغ تقييم 30 يوم الافتراضي (دج)</label><input id="cfg-eval" type="number" value="${config.evalBonusPool}"></div>
     </div>
     <div class="row">
-      <div><label>سعر اللايف الواحد (دج)</label><input id="cfg-live" type="number" value="${config.liveRate}"></div>
+      <div><label>سعر جلسة اللايف (دج)</label><input id="cfg-live" type="number" value="${config.liveRate}"></div>
       <div><label>عدد ساعات يوم العمل</label><input id="cfg-hours" type="number" step="0.5" value="${config.workdayHours}"></div>
     </div>
     <div class="row">
-      <div><label>عدد أيام الشهر المعتمدة في الحساب</label><input id="cfg-ndays" type="number" value="${config.expectedMonthDays}"></div>
-      <div><label>يوم صرف الأجور من كل شهر</label><input id="cfg-payday" type="number" min="1" max="28" value="${config.paydayDay}"></div>
+      <div><label>أيام الشهر المعتمدة في الحساب</label><input id="cfg-ndays" type="number" value="${config.expectedMonthDays}"></div>
+      <div><label>يوم صرف الأجور من الشهر</label><input id="cfg-payday" type="number" min="1" max="28" value="${config.paydayDay}"></div>
     </div>
     <div class="row">
       <div><label>وقت بداية الفوج الصباحي</label><input id="cfg-mstart" type="time" value="${config.morningShiftStart||'08:00'}"></div>
-      <div><label>وقت الفصل بين الفوج الصباحي والمسائي</label><input id="cfg-shift" type="time" value="${config.shiftSplitTime||'14:30'}"></div>
+      <div><label>وقت بداية الفوج المسائي</label><input id="cfg-shift" type="time" value="${config.shiftSplitTime||'14:30'}"></div>
     </div>
     <div class="row">
-      <div><label>حد التأخر بالدقائق (0 لتعطيل احتساب التأخر كلياً)</label><input id="cfg-latemin" type="number" min="0" value="${config.lateThresholdMinutes ?? 10}"></div>
-      <div><label>عدد التأخيرات التي تساوي يوم غياب</label><input id="cfg-latecount" type="number" value="${config.lateCountForAbsence||5}"></div>
+      <div><label>حد التأخر بالدقائق (0 للتعطيل)</label><input id="cfg-latemin" type="number" min="0" value="${config.lateThresholdMinutes ?? 10}"></div>
+      <div><label>عدد التأخيرات = يوم غياب</label><input id="cfg-latecount" type="number" value="${config.lateCountForAbsence||5}"></div>
     </div>
     <div class="row">
-      <div><label>رصيد العطلة المدفوعة الأجر سنوياً (بالأيام) لكل متعاون</label><input id="cfg-leave-quota" type="number" value="${config.paidLeaveQuotaPerYear||10}"></div>
+      <div><label>رصيد العطلة المدفوعة سنوياً (أيام)</label><input id="cfg-leave-quota" type="number" value="${config.paidLeaveQuotaPerYear||10}"></div>
+      <div><label>نطاق GPS (متر)</label><input id="cfg-geofence" type="number" value="${config.geofenceRadius||150}"></div>
     </div>
     <div class="row">
-      <div><label>رابط موقع المحل على خرائط جوجل (اختياري)</label><input id="cfg-map" value="${esc(config.shopMapLink||'')}" placeholder="https://maps.google.com/?q=..."></div>
+      <div><label>رابط موقع المحل على خرائط Google</label><input id="cfg-map" value="${esc(config.shopMapLink||'')}" placeholder="https://maps.google.com/?q=..."></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <button class="btn btn-outline btn-sm" onclick="captureShopLocation()">📍 التقاط إحداثيات موقع المحل الآن</button>
     </div>
     <div class="row">
-      <div><label>نطاق التحقق من الموقع (متر)</label><input id="cfg-geofence" type="number" value="${config.geofenceRadius||150}"></div>
-    </div>
-    <button class="btn btn-outline btn-sm" onclick="captureShopLocation()">📍 حدد موقع المحل الآن (وأنت واقف بالمحل)</button>
-    <div class="row" style="margin-top:12px;">
       <div><label>اسم المحل</label><input id="cfg-shop" value="${esc(config.shopName)}"></div>
       <div><label>رمز دخول صاحب المحل</label><input id="cfg-pin" value="${esc(config.ownerPin)}"></div>
     </div>
-    <button class="btn btn-brass" onclick="saveSettings()">حفظ الإعدادات</button>
+    <button class="btn btn-brass" onclick="saveSettings()">حفظ جميع الإعدادات</button>
   </div>
+
   <div class="card">
-    <h2>تسجيل الحضور عبر واي فاي المحل</h2>
+    <h2>قفل الحضور على واي فاي المحل</h2>
     <div class="row">
-      <div><label>عنوان IP العام لشبكة المحل</label><input id="cfg-ip" value="${esc(config.shopPublicIP||'')}" placeholder="مثال: 41.xxx.xxx.xxx"></div>
+      <div><label>عنوان IP العام للواي فاي</label><input id="cfg-ip" value="${esc(config.shopPublicIP||'')}" placeholder="مثال: 41.xxx.xxx.xxx (اتركه فارغاً لتعطيل الشرط)"></div>
     </div>
     <button class="btn btn-brass" onclick="saveNetworkSettings()">حفظ إعداد الشبكة</button>
   </div>
+
   <div class="card">
-    <h2>ربط هذا المحل بـ Google Sheet (تصدير محلي)</h2>
-    <div class="row"><div><label>رابط Google Apps Script للمحل</label><input id="cfg-sheet" value="${esc(config.sheetsWebhookUrl||'')}" placeholder="https://script.google.com/macros/s/.../exec"></div></div>
-    <label style="display:flex; align-items:center; gap:8px; font-weight:600; color:var(--ink-soft); margin-bottom:12px;">
+    <h2>ربط Google Sheet الخاص بهذا الفرع</h2>
+    <div class="row"><div><label>رابط Google Apps Script</label><input id="cfg-sheet" value="${esc(config.sheetsWebhookUrl||'')}" placeholder="https://script.google.com/macros/s/.../exec"></div></div>
+    <label style="display:flex; align-items:center; gap:8px; font-weight:600; color:var(--ink-light); margin-bottom:12px;">
       <input type="checkbox" id="cfg-autosync" ${config.autoSyncSheet?'checked':''} style="width:auto; margin:0;">
-      تفعيل المزامنة التلقائية لورقة السجل العام لهذا المحل
+      تفعيل المزامنة الفورية للسجل العام مع Google Sheet
     </label>
-    <button class="btn btn-brass" onclick="saveSheetSettings()">حفظ رابط الشيت</button>
+    <button class="btn btn-brass" onclick="saveSheetSettings()">حفظ إعدادات الربط</button>
   </div>
+
   <div class="card">
-    <h2>نسخ احتياطي</h2>
-    <button class="btn btn-brass" onclick="downloadBackup()">تحميل نسخة احتياطية الآن</button>
-    <div style="margin-top:14px;">
-      <label>استعادة من نسخة احتياطية</label>
-      <input type="file" id="restore-file" accept="application/json">
-      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="restoreBackup()">استعادة الآن</button>
+    <h2>النسخ الاحتياطي والاستعادة</h2>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+      <button class="btn btn-brass" onclick="downloadBackup()">📥 تنزيل نسخة احتياطية كاملة (JSON)</button>
+    </div>
+    <div style="padding-top:10px; border-top:1px dashed var(--line);">
+      <label>استعادة قاعدة البيانات من ملف نسخة احتياطية</label>
+      <input type="file" id="restore-file" accept="application/json" style="max-width:320px;">
+      <button class="btn btn-danger btn-sm" onclick="restoreBackup()">استعادة البيانات الآن</button>
     </div>
   </div>`;
 }
+
 function saveSettings(){
   config.baseSalary = Number(document.getElementById('cfg-base').value||0);
   config.evalBonusPool = Number(document.getElementById('cfg-eval').value||0);
@@ -1155,24 +1665,26 @@ function saveSettings(){
   config.geofenceRadius = Number(document.getElementById('cfg-geofence').value||150);
   config.shopName = document.getElementById('cfg-shop').value.trim();
   config.ownerPin = document.getElementById('cfg-pin').value.trim();
-  saveConfig(); render(); alert('تم الحفظ');
+  saveConfig(); render(); showToast('تم حفظ الإعدادات بنجاح', 'success');
 }
+
 async function captureShopLocation(){
   const geo = await getGeoLocation();
-  if(!geo){ alert('تعذر الحصول على الموقع، تأكد من السماح للمتصفح بالوصول لموقعك.'); return; }
+  if(!geo){ showToast('تعذر التقاط الموقع، تأكد من تفعيل GPS في الهاتف', 'error'); return; }
   config.shopLat = geo.lat; config.shopLng = geo.lng;
   saveConfig(); render();
-  alert('تم حفظ موقع المحل المرجعي');
+  showToast('تم حفظ إحداثيات موقع المحل 📍', 'success');
 }
 function saveNetworkSettings(){
   config.shopPublicIP = document.getElementById('cfg-ip').value.trim();
-  saveConfig(); render(); alert('تم الحفظ');
+  saveConfig(); render(); showToast('تم حفظ إعدادات الشبكة', 'success');
 }
 function saveSheetSettings(){
   config.sheetsWebhookUrl = document.getElementById('cfg-sheet').value.trim();
   config.autoSyncSheet = document.getElementById('cfg-autosync').checked;
-  saveConfig(); render(); alert('تم الحفظ');
+  saveConfig(); render(); showToast('تم حفظ إعدادات Google Sheet', 'success');
 }
+
 function downloadBackup(){
   const backup = { exportedAt:new Date().toISOString(), config, workers, attendance, monthly, payments, requests, activityLog, dutyLog, supervisorAttendance };
   const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json;charset=utf-8;'});
@@ -1181,16 +1693,18 @@ function downloadBackup(){
   a.href = url; a.download = `Backup_${(config.shopName||'shop').replace(/[^\p{L}\p{N}]+/gu,'_')}_${todayStr()}.json`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  logActivity(`${state.session.name} حمّل نسخة احتياطية كاملة`);
+  logActivity(`${state.session.name} أنشأ نسخة احتياطية كاملة`);
+  showToast('تم تنزيل النسخة الاحتياطية', 'success');
 }
+
 async function restoreBackup(){
   const fileInput = document.getElementById('restore-file');
   const file = fileInput.files[0];
-  if(!file){ alert('اختر ملف النسخة الاحتياطية أولاً'); return; }
+  if(!file){ showToast('اختر ملف النسخة الاحتياطية أولاً', 'warning'); return; }
   const text = await file.text();
   let data;
-  try{ data = JSON.parse(text); }catch(e){ alert('الملف غير صالح'); return; }
-  if(!data.config || !data.workers){ alert('الملف لا يحتوي على بيانات صحيحة'); return; }
+  try{ data = JSON.parse(text); }catch(e){ showToast('الملف غير صالح', 'error'); return; }
+  if(!data.config || !data.workers){ showToast('الملف لا يحتوي على بيانات الفتح', 'error'); return; }
   try{
     config = data.config; workers = data.workers||[]; attendance = data.attendance||[]; monthly = data.monthly||[];
     payments = data.payments||[]; requests = data.requests||[]; activityLog = data.activityLog||[]; dutyLog = data.dutyLog||[];
@@ -1200,21 +1714,26 @@ async function restoreBackup(){
       fbSet(KEYS.monthly, monthly), fbSet(KEYS.payments, payments), fbSet(KEYS.requests, requests),
       fbSet(KEYS.activity, activityLog), fbSet(KEYS.duty, dutyLog), fbSet(KEYS.supAttendance, supervisorAttendance)
     ]);
-    alert('تم استعادة النسخة الاحتياطية بنجاح');
+    showToast('تمت استعادة البيانات بنجاح 🎉', 'success');
     render();
   }catch(e){
-    alert('حدث خطأ أثناء الاستعادة، تحقق من الاتصال بالإنترنت وحاول مجدداً.');
+    showToast('حدث خطأ أثناء الاستعادة، تحقق من الإنترنت', 'error');
   }
 }
 
-/* ================= SUPERVISOR ================= */
+/* ================= SUPERVISOR VIEW ================= */
 function viewSupervisor(){
   const pc = pendingRequestsCount();
-  const tabs=[['today','اليوم'],['selfcheckin','حضوري'],['attendance','الحضور'],['monthly','التقييم الشهري'],['requests',`الطلبات${pc?` (${pc})`:''}`],['history','سجل الحضور'],['report','تقرير العمل'],['duty','المسؤوليات اليومية'],['notifications','الإشعارات'],['activity','السجل العام'],['reports','التقارير']];
+  const tabs=[
+    ['today','اليوم'],['selfcheckin','حضوري الشخصي'],['attendance','حضور المتعاونين'],
+    ['monthly','التقييم الشهري'],['requests',`الطلبات${pc?` <span class="tab-badge">${pc}</span>`:''}`],
+    ['history','سجل الحضور'],['report','تقرير العمل'],['duty','المسؤوليات'],
+    ['notifications','الإشعارات'],['activity','السجل العام'],['reports','ملخص الأجور']
+  ];
   let content = state.tab==='monthly'?supMonthly(): state.tab==='reports'?supReports(): state.tab==='requests'?reqManage(): state.tab==='history'?attendanceHistory(): state.tab==='activity'?generalActivityLog(): state.tab==='duty'?dutyManage(): state.tab==='notifications'?notificationsManage(): state.tab==='report'?reportManage(): state.tab==='selfcheckin'?supSelfCheckin(): state.tab==='today'?todayDashboard(): supAttendance();
   return `${brandbar()}<div class="tab-bar">
     ${tabs.map(t=>`<button class="tab ${state.tab===t[0]?'active':''}" onclick="supTab('${t[0]}')">${t[1]}</button>`).join('')}
-    <button class="tab" onclick="logout()">خروج</button></div>${content}`;
+    <button class="tab" onclick="logout()" style="color:var(--burgundy-light);">خروج 🚪</button></div>${content}`;
 }
 function supTab(t){ state.tab=t; state.detailWorkerId=null; state.editAttendanceId=null; state.confirmDeleteId=null; render(); }
 function workerOptions(selected){ return workers.map(w=>`<option value="${w.id}" ${w.id===selected?'selected':''}>${esc(w.name)}</option>`).join(''); }
@@ -1225,25 +1744,31 @@ function supAttendance(){
   const rows = workers.map(w=>{
     const shiftTags = ['صباحي','مسائي'].map(shift=>{
       const rec = todays.find(a=>a.workerId===w.id && a.shift===shift);
-      const status = !rec? `<span class="badge badge-absent">${shift}: لم يحضر</span>`
-        : !rec.checkOut? `<span class="badge badge-open">${shift}: حاضر منذ ${rec.checkIn}</span>`
-        : `<span class="badge badge-present">${shift}: ${rec.checkIn} - ${rec.checkOut}</span>`;
+      const status = !rec? `<span class="badge badge-absent">${shift}: غائب</span>`
+        : !rec.checkOut? `<span class="badge badge-open">${shift}: حاضر (${rec.checkIn})</span>`
+        : `<span class="badge badge-present">${shift}: ${rec.checkIn} → ${rec.checkOut}</span>`;
       const inputId = `mk-time-${w.id}-${shift}`;
       const btns = `${!rec?`
-          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px;">
-          <button class="btn btn-brass btn-sm" onclick="markIn('${w.id}','${shift}', document.getElementById('${inputId}').value)">حضور ${shift}</button>`:''}
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:6px;">
+          <button class="btn btn-brass btn-sm" onclick="markIn('${w.id}','${shift}', document.getElementById('${inputId}').value)">تسجيل حضور</button>`:''}
         ${rec && !rec.checkOut?`
-          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px;">
-          <button class="btn btn-outline btn-sm" onclick="markOut('${w.id}','${shift}', document.getElementById('${inputId}').value)">انصراف ${shift}</button>`:''}`;
-      return `<div style="margin-bottom:6px;">${status} ${btns}</div>`;
+          <input type="time" id="${inputId}" value="${nowTime()}" style="width:auto; display:inline-block; margin:0 4px; padding:6px;">
+          <button class="btn btn-outline btn-sm" onclick="markOut('${w.id}','${shift}', document.getElementById('${inputId}').value)">تسجيل انصراف</button>`:''}`;
+      return `<div style="margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;"><div>${status}</div><div>${btns}</div></div>`;
     }).join('');
-    return `<div class="list-item">
-      <div><b>${esc(w.name)}</b></div>
-      <div>${shiftTags}</div></div>`;
+    return `<div class="list-item" style="flex-direction:column; align-items:stretch;">
+      <div style="font-weight:700; font-size:15px; margin-bottom:4px;">👤 ${esc(w.name)}</div>
+      <div>${shiftTags}</div>
+    </div>`;
   }).join('');
-  return `<div class="card"><h2>حضور اليوم — ${today}</h2>
-    ${rows||'<p class="empty">لا يوجد متعاونين بعد</p>'}</div>`;
+  return `<div class="card">
+    <div class="card-header">
+      <h2>حضور المتعاونين اليوم — ${today}</h2>
+    </div>
+    ${rows||'<p class="empty">لا يوجد متعاونين مسجلين</p>'}
+  </div>`;
 }
+
 function markIn(workerId, shift, time){
   if(attendance.find(a=>a.workerId===workerId && a.date===todayStr() && a.shift===shift)) return;
   const inTime = time || nowTime();
@@ -1255,8 +1780,10 @@ function markIn(workerId, shift, time){
     shift, action: 'حضور (بواسطة المسؤول)', late: isLateRecord({checkIn: inTime, shift}) ? 'متأخر' : 'في الوقت',
     mapLink: ''
   });
+  showToast(`تم تسجيل حضور ${w?w.name:''}`, 'success');
   render();
 }
+
 function markOut(workerId, shift, time){
   const rec=attendance.find(a=>a.workerId===workerId && a.date===todayStr() && a.shift===shift && !a.checkOut);
   if(rec){
@@ -1269,30 +1796,32 @@ function markOut(workerId, shift, time){
       shift, action: 'انصراف (بواسطة المسؤول)', late: '—',
       mapLink: ''
     });
+    showToast(`تم تسجيل انصراف ${w?w.name:''}`, 'info');
     render();
   }
 }
 
 function supSelfCheckin(){
   const todays = supervisorAttendance.filter(a=>a.supervisorId===state.session.id && a.date===todayStr());
-  const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px;">التسجيل يعمل فقط عند الاتصال بشبكة واي فاي المحل</p>` : '';
+  const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px;">🔒 التسجيل مشروط بالاتصال بشبكة واي فاي المحل</p>` : '';
   const shiftBlocks = ['صباحي','مسائي'].map(shift=>{
     const rec = todays.find(a=>a.shift===shift);
     let action;
-    if(!rec) action = `<button class="btn btn-brass" onclick="supSelfIn('${shift}')">تسجيل حضور الفوج ${shift}</button>${netNote}`;
-    else if(!rec.checkOut) action = `<div class="muted">حضرت الساعة ${rec.checkIn}</div><button class="btn btn-outline" style="margin-top:8px;" onclick="supSelfOut('${shift}')">تسجيل انصراف الفوج ${shift}</button>${netNote}`;
-    else action = `<div class="muted">✓ تم: حضور ${rec.checkIn} — انصراف ${rec.checkOut}</div>`;
-    return `<div class="card"><h3>الفوج ${shift}</h3>${action}</div>`;
+    if(!rec) action = `<button class="btn btn-brass" style="width:100%; padding:12px;" onclick="supSelfIn('${shift}')">تسجيل حضور الفوج ${shift}</button>${netNote}`;
+    else if(!rec.checkOut) action = `<div class="muted" style="margin-bottom:8px;">حضرت الساعة <b>${rec.checkIn}</b></div><button class="btn btn-outline" style="width:100%; padding:10px;" onclick="supSelfOut('${shift}')">تسجيل انصراف الفوج ${shift}</button>${netNote}`;
+    else action = `<div class="badge badge-present" style="font-size:14px; padding:8px 14px;">✓ تم تسجيل اليوم: حضور ${rec.checkIn} — انصراف ${rec.checkOut}</div>`;
+    return `<div class="card" style="border-top:3px solid var(--brass);"><h3>الفوج ${shift}</h3>${action}</div>`;
   }).join('');
   return `<div class="card worker-checkin-box"><div class="muted">${todayStr()}</div><div class="clock">${nowTime()}</div></div>${shiftBlocks}`;
 }
+
 let supCheckinBusy = false;
 async function supSelfIn(shift){
   if(supCheckinBusy) return;
   supCheckinBusy = true;
   try{
     const ok = await checkShopNetwork();
-    if(!ok){ alert('يجب الاتصال بشبكة واي فاي المحل لتسجيل الحضور'); return; }
+    if(!ok){ showToast('يجب الاتصال بشبكة واي فاي المحل لتسجيل الحضور', 'warning'); return; }
     let fresh;
     try{ fresh = (await fbGet(KEYS.supAttendance)) || supervisorAttendance; }catch(e){ fresh = supervisorAttendance; }
     supervisorAttendance = fresh;
@@ -1308,15 +1837,17 @@ async function supSelfIn(shift){
       shift, action: 'حضور', late: isLateRecord({checkIn: inTime, shift}) ? 'متأخر' : 'في الوقت',
       mapLink: geo ? mapLink(geo.lat, geo.lng) : ''
     });
+    showToast('تم تسجيل حضورك بنجاح ✅', 'success');
     render();
   } finally { supCheckinBusy = false; }
 }
+
 async function supSelfOut(shift){
   if(supCheckinBusy) return;
   supCheckinBusy = true;
   try{
     const ok = await checkShopNetwork();
-    if(!ok){ alert('يجب الاتصال بشبكة واي فاي المحل لتسجيل الانصراف'); return; }
+    if(!ok){ showToast('يجب الاتصال بشبكة واي فاي المحل لتسجيل الانصراف', 'warning'); return; }
     const rec = supervisorAttendance.find(a=>a.supervisorId===state.session.id && a.date===todayStr() && a.shift===shift && !a.checkOut);
     if(!rec) return;
     const geo = await getGeoLocation();
@@ -1329,6 +1860,7 @@ async function supSelfOut(shift){
       shift, action: 'انصراف', late: '—',
       mapLink: geo ? mapLink(geo.lat, geo.lng) : ''
     });
+    showToast('تم تسجيل انصرافك بنجاح ✅', 'info');
     render();
   } finally { supCheckinBusy = false; }
 }
@@ -1337,30 +1869,34 @@ function supMonthly(){
   const wid = state.editWorkerId || (workers[0] && workers[0].id);
   const rec = wid ? getMonthlyRecord(wid, state.month) : null;
   return `<div class="card">
-    <div class="row" style="align-items:center;"><h2 style="margin:0;">التقييم الشهري</h2>${monthPicker()}</div>
+    <div class="card-header">
+      <h2>التقييم الشهري للمتعاونين</h2>
+      ${monthPicker()}
+    </div>
     <div class="row">
-      <div><label>المتعاون</label><select id="mo-w" onchange="state.editWorkerId=this.value; render();">${workerOptions(wid)}</select></div>
+      <div><label>اختر المتعاون للتقييم</label><select id="mo-w" onchange="state.editWorkerId=this.value; render();">${workerOptions(wid)}</select></div>
     </div>
     ${RUBRIC}
     ${wid ? `
     <div class="row">
       <div><label>الأيام الإضافية (عمل في يوم راحته)</label><input id="mo-extra" type="number" value="${rec.extraDays||0}"></div>
-      <div><label>عدد جلسات اللايف</label><input id="mo-live" type="number" value="${rec.liveCount||0}"></div>
+      <div><label>عدد جلسات اللايف (Live)</label><input id="mo-live" type="number" value="${rec.liveCount||0}"></div>
     </div>
     <div class="row">
       <div><label>الساعات الإضافية</label><input id="mo-ot" type="number" value="${rec.overtimeHours||0}"></div>
-      <div><label>النقل (دج)</label><input id="mo-transport" type="number" value="${rec.transport||0}"></div>
+      <div><label>منحة النقل (دج)</label><input id="mo-transport" type="number" value="${rec.transport||0}"></div>
     </div>
     <div class="row">
       <div><label>نقاط المبيعات (من 50)</label><input id="mo-sales" type="number" max="50" value="${rec.salesScore||0}"></div>
-      <div><label>نقاط الميديا (من 50)</label><input id="mo-media" type="number" max="50" value="${rec.mediaScore||0}"></div>
+      <div><label>نقاط الميديا وصناعة المحتوى (من 50)</label><input id="mo-media" type="number" max="50" value="${rec.mediaScore||0}"></div>
     </div>
-    <label>ملاحظة</label><input id="mo-note" value="${esc(rec.note||'')}" placeholder="اختياري">
+    <label>ملاحظة تقييمية (اختياري)</label><input id="mo-note" value="${esc(rec.note||'')}" placeholder="ملاحظات حول أدائه هذا الشهر">
     <button class="btn btn-brass" onclick="saveMonthlyRecord('${wid}')">حفظ تقييم هذا الشهر</button>
     ` : '<p class="empty">أضف متعاوناً أولاً</p>'}
   </div>
   ${wid ? wageDetailCard(wid, state.month, isPaid(wid, state.month)) : ''}`;
 }
+
 function saveMonthlyRecord(workerId){
   const data = {
     extraDays: Number(document.getElementById('mo-extra').value||0),
@@ -1377,47 +1913,62 @@ function saveMonthlyRecord(workerId){
   saveMonthly();
   const w = workers.find(x=>x.id===workerId);
   logActivity(`${state.session.name} عدّل التقييم الشهري لـ ${w?w.name:'؟'} (${state.month})`);
+  showToast('تم حفظ التقييم بنجاح ✅', 'success');
   render();
 }
+
 function supReports(){
-  return `${lateWarningBanner(state.month)}<div class="card">
-    <div class="row" style="align-items:center; margin-bottom:10px;"><h2 style="margin:0;">ملخص الأجور</h2>${monthPicker()}</div>
+  return `${lateWarningBanner(state.month)}
+  <div class="card">
+    <div class="card-header">
+      <h2>ملخص الأجور والتقييم — ${state.month}</h2>
+      <div style="display:flex; gap:8px;">
+        ${monthPicker()}
+        <button class="btn btn-forest btn-sm" onclick="exportWagesExcel(state.month)">📊 تصدير Excel</button>
+      </div>
+    </div>
     ${wageTable(state.month, false)}
   </div>`;
 }
+
 function pendingNotifCountFor(workerId){ return notifications.filter(n=>n.workerId===workerId && !n.read).length; }
+
 function notificationsManage(){
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
   const workerOptions = workers.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('');
   const sent = notifications.slice().sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0,100);
   const rows = sent.map(n=>`<div class="list-item">
-    <div><b>${esc(wname(n.workerId))}</b> <span class="muted">${new Date(n.createdAt).toLocaleString('ar-DZ')}</span>
-      <div class="muted">${esc(n.message)}</div>
+    <div>
+      <b>${esc(wname(n.workerId))}</b> <span class="muted" style="font-size:12px;">(${new Date(n.createdAt).toLocaleDateString('ar-DZ')})</span>
+      <div class="muted" style="margin-top:4px;">${esc(n.message)}</div>
     </div>
-    <span class="badge ${n.read?'badge-present':'badge-open'}">${n.read?'مقروء':'غير مقروء'}</span>
+    <span class="badge ${n.read?'badge-present':'badge-open'}">${n.read?'مقروء':'لم يُقرأ بعد'}</span>
   </div>`).join('');
   return `<div class="card">
-    <h2>إرسال إشعار لمتعامل</h2>
+    <h2>إرسال إشعار أو تنبيه لمتعاون</h2>
     <div class="row">
-      <div><label>المتعامل</label><select id="notif-worker">${workerOptions}</select></div>
+      <div><label>اختر المتعاون</label><select id="notif-worker">${workerOptions}</select></div>
     </div>
-    <label>الرسالة</label>
-    <textarea id="notif-msg" rows="2" placeholder="اكتب تذكيراً أو ملاحظة..." style="width:100%; padding:8px; border:1.5px solid var(--line); border-radius:7px; font-family:'Cairo'; font-size:14px; margin-bottom:12px;"></textarea>
-    <button class="btn btn-brass" onclick="sendNotification()">إرسال</button>
+    <label>نص الرسالة أو التنبيه</label>
+    <textarea id="notif-msg" rows="2" placeholder="اكتب تذكيراً، تشجيعاً أو تنبيهاً..."></textarea>
+    <button class="btn btn-brass" onclick="sendNotification()">إرسال الإشعار</button>
   </div>
-  <div class="card"><h2>الإشعارات المرسلة</h2>${rows||'<p class="empty">لا يوجد إشعارات مرسلة بعد</p>'}</div>`;
+  <div class="card"><h2>سجل الإشعارات المرسلة</h2>${rows||'<p class="empty">لا يوجد إشعارات مرسلة بعد</p>'}</div>`;
 }
+
 function sendNotification(){
   const workerId = document.getElementById('notif-worker').value;
   const message = document.getElementById('notif-msg').value.trim();
-  if(!workerId || !message){ alert('اختر المتعامل واكتب الرسالة'); return; }
+  if(!workerId || !message){ showToast('اختر المتعاون واكتب نص الرسالة', 'warning'); return; }
   notifications.push({ id:uid(), workerId, message, senderName: state.session.name, createdAt: new Date().toISOString(), read:false });
   saveNotifications();
   const w = workers.find(x=>x.id===workerId);
   logActivity(`${state.session.name} أرسل إشعاراً لـ${w?w.name:'؟'}`);
   document.getElementById('notif-msg').value='';
+  showToast('تم إرسال الإشعار بنجاح', 'success');
   render();
 }
+
 function reqManage(){
   const pending = requests.filter(r=>r.status==='pending').sort((a,b)=> a.createdAt.localeCompare(b.createdAt));
   const decided = requests.filter(r=>r.status!=='pending').sort((a,b)=> b.createdAt.localeCompare(a.createdAt)).slice(0,20);
@@ -1425,22 +1976,24 @@ function reqManage(){
   const pendingRows = pending.map(r=>{
     const leaveNote = r.type==='paidLeave' ? ` <span class="muted">(رصيده المتبقي: ${remainingPaidLeave(r.workerId, r.month.slice(0,4))} يوم)</span>` : '';
     return `<div class="list-item">
-    <div><b>${esc(wname(r.workerId))}</b> — ${REQ_TYPES[r.type]}: ${r.amount} <span class="muted">(${r.month})</span>${leaveNote} ${r.note?`<div class="muted">${esc(r.note)}</div>`:''}</div>
-    <div><button class="btn btn-brass btn-sm" onclick="decideRequest('${r.id}', true)">موافقة</button>
-      <button class="btn btn-danger" onclick="decideRequest('${r.id}', false)">رفض</button></div>
+    <div><b>👤 ${esc(wname(r.workerId))}</b> — <span style="font-weight:700; color:var(--brass);">${REQ_TYPES[r.type]}: ${r.amount}</span> <span class="muted">(${r.month})</span>${leaveNote} ${r.note?`<div class="muted" style="margin-top:2px;">💬 ${esc(r.note)}</div>`:''}</div>
+    <div style="display:flex; gap:6px;">
+      <button class="btn btn-forest btn-sm" onclick="decideRequest('${r.id}', true)">موافقة ✓</button>
+      <button class="btn btn-danger btn-sm" onclick="decideRequest('${r.id}', false)">رفض ✕</button>
+    </div>
   </div>`;
   }).join('');
   const decidedRows = decided.map(r=>`<div class="list-item">
     <div><b>${esc(wname(r.workerId))}</b> — ${REQ_TYPES[r.type]}: ${r.amount} <span class="muted">(${r.month})</span></div>
     <span class="badge ${r.status==='approved'?'badge-present':'badge-absent'}">${r.status==='approved'?'تمت الموافقة':'مرفوض'}</span>
   </div>`).join('');
-  return `<div class="card"><h2>طلبات بانتظار الموافقة</h2>${pendingRows||'<p class="empty">لا يوجد طلبات معلّقة</p>'}</div>
-  <div class="card"><h2>آخر القرارات</h2>${decidedRows||'<p class="empty">لا يوجد قرارات سابقة</p>'}</div>`;
+  return `<div class="card"><h2>طلبات معلّقة بانتظار الموافقة</h2>${pendingRows||'<p class="empty">لا يوجد طلبات معلّقة حالياً 👍</p>'}</div>
+  <div class="card"><h2>آخر الطلبات التي تم الفصل فيها</h2>${decidedRows||'<p class="empty">لا يوجد قرارات سابقة</p>'}</div>`;
 }
 
 function reportRows(){
   const [from, to] = reportRange();
-  const workerId = (state.report.type==='worker') ? state.report.workerId : null;
+  const workerId = (state.report && state.report.type==='worker') ? state.report.workerId : null;
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
   let rows = attendance.filter(a=> a.date>=from && a.date<=to && (!workerId || a.workerId===workerId));
   rows.sort((a,b)=> a.date.localeCompare(b.date) || wname(a.workerId).localeCompare(wname(b.workerId)));
@@ -1482,20 +2035,25 @@ function reportManage(){
   const tableRows = rows.map(x=>`<tr>
     <td>${x.date}</td><td><b>${esc(x.worker)}</b></td><td>${x.checkIn||'—'}</td><td>${x.checkOut||'—'}</td>
     <td>${esc(x.tasks)||'—'}</td><td>${x.taskCount}</td><td>${esc(x.notes)||'—'}</td>
-    <td>${x.late==='نعم'?'<span class="badge badge-absent">متأخر</span>':''}</td>
+    <td>${x.late==='نعم'?'<span class="badge badge-absent">متأخر</span>':'<span class="badge badge-present">في الوقت</span>'}</td>
   </tr>`).join('');
   return `<div class="card">
-    <h2>تقرير العمل</h2>
+    <div class="card-header">
+      <h2>تقرير العمل والمهام</h2>
+      <button class="btn btn-forest btn-sm" onclick="exportReportExcel()">📊 تصدير التقرير Excel</button>
+    </div>
     <div class="tab-bar" style="margin-bottom:14px;">
       ${types.map(t=>`<button class="tab ${r.type===t[0]?'active':''}" onclick="state.report.type='${t[0]}'; render();">${t[1]}</button>`).join('')}
     </div>
     ${dateInputs}
   </div>
   <div class="card">
-    <table class="ledger">
-      <thead><tr><th>التاريخ</th><th>المتعاون</th><th>وقت الدخول</th><th>وقت الخروج</th><th>المهام المنجزة</th><th>عدد المهام</th><th>ملاحظات</th><th></th></tr></thead>
-      <tbody>${tableRows || `<tr><td colspan="8" class="empty">لا يوجد بيانات لهذه الفترة</td></tr>`}</tbody>
-    </table>
+    <div class="table-responsive">
+      <table class="ledger">
+        <thead><tr><th>التاريخ</th><th>المتعاون</th><th>الدخول</th><th>الخروج</th><th>المهام المنجزة</th><th>العدد</th><th>ملاحظات</th><th>الانضباط</th></tr></thead>
+        <tbody>${tableRows || `<tr><td colspan="8" class="empty">لا توجد بيانات لهذه الفترة</td></tr>`}</tbody>
+      </table>
+    </div>
   </div>`;
 }
 
@@ -1506,106 +2064,126 @@ function todayDashboard(){
   const absentToday = workers.filter(w=> !todays.some(a=>a.workerId===w.id));
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
   return `
-  <div class="card">
-    <h2>ملخص اليوم — ${today}</h2>
-    <div class="row">
-      <div><div class="muted">حاضرون الآن</div><h2 style="margin:4px 0;">${presentNow.length}</h2></div>
-      <div><div class="muted">غائبون اليوم</div><h2 style="margin:4px 0;">${absentToday.length}</h2></div>
+  <div class="stats-grid">
+    <div class="stat-card forest">
+      <span class="stat-title">الحاضرون الآن بالمحل</span>
+      <span class="stat-val amt">${presentNow.length}</span>
+      <span class="stat-sub">فوج صباحي / مسائي</span>
+    </div>
+    <div class="stat-card burgundy">
+      <span class="stat-title">لم يسجلوا بعد</span>
+      <span class="stat-val neg">${absentToday.length}</span>
+      <span class="stat-sub">من أصل ${workers.length} متعاونين</span>
     </div>
   </div>
   <div class="card">
-    <h3>حاضرون الآن</h3>
-    ${presentNow.length? presentNow.map(a=>`<div class="list-item"><div><b>${esc(wname(a.workerId))}</b> — فوج ${a.shift} — منذ ${a.checkIn}</div></div>`).join('') : '<p class="empty">لا أحد حاضر الآن</p>'}
+    <h3>🟢 الحاضرون الآن</h3>
+    ${presentNow.length? presentNow.map(a=>`<div class="list-item"><div>👤 <b>${esc(wname(a.workerId))}</b> — فوج <b>${a.shift}</b> — مسجل منذ الساعة <b>${a.checkIn}</b></div></div>`).join('') : '<p class="empty">لا يوجد أي متعاون حاضر حالياً</p>'}
   </div>`;
 }
+
 function dutyManage(){
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
   const rows = dutyLog.filter(d=>d.date.slice(0,7)===state.month).sort((a,b)=> b.date.localeCompare(a.date) || a.shift.localeCompare(b.shift));
   const body = rows.map(d=>`<div class="list-item">
-    <div><b>${esc(wname(d.workerId))}</b> — ${d.date} <span class="badge badge-open">${d.shift}</span></div>
+    <div><b>👤 ${esc(wname(d.workerId))}</b> — ${d.date} <span class="badge badge-open">${d.shift}</span></div>
     <div class="muted">${esc(dutyRespText(d) || 'لا مسؤوليات محددة')}</div>
   </div>`).join('');
   return `<div class="card">
-    <div class="row" style="align-items:center;"><h2 style="margin:0;">المسؤوليات اليومية</h2>${monthPicker()}</div>
+    <div class="card-header">
+      <h2>المسؤوليات والمهام اليومية</h2>
+      ${monthPicker()}
+    </div>
     ${body || '<p class="empty">لا يوجد بيانات لهذا الشهر</p>'}
   </div>`;
 }
+
 function generalActivityLog(){
   const rows = activityLog.filter(a=> a.at.slice(0,7)===state.month).sort((a,b)=> b.at.localeCompare(a.at));
   const body = rows.map(a=>{
     const d = new Date(a.at);
     return `<div class="list-item">
-      <div><span class="muted">${d.toISOString().slice(0,10)} ${d.toTimeString().slice(0,5)}</span> — <b>${esc(a.actor)}</b>: ${esc(a.action)}</div>
+      <div><span class="muted" style="font-size:12px;">${d.toISOString().slice(0,10)} ${d.toTimeString().slice(0,5)}</span> — <b>${esc(a.actor)}</b>: ${esc(a.action)}</div>
     </div>`;
   }).join('');
   return `<div class="card">
-    <div class="row" style="align-items:center;">
-      <h2 style="margin:0;">السجل العام لهذا الشهر</h2>
-      ${monthPicker()}
-      <button class="btn btn-outline btn-sm" onclick="exportActivityCSV(state.month)">تحميل CSV</button>
-      <button class="btn btn-outline btn-sm" onclick="exportActivityToSheet(state.month)">إرسال إلى Google Sheet</button>
+    <div class="card-header">
+      <h2>السجل العام للعمليات — ${state.month}</h2>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${monthPicker()}
+        <button class="btn btn-forest btn-sm" onclick="exportActivityCSV(state.month)">تحميل CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportActivityToSheet(state.month)">Google Sheet</button>
+      </div>
     </div>
-    ${body || '<p class="empty">لا يوجد أحداث مسجّلة لهذا الشهر</p>'}
+    ${body || '<p class="empty">لا توجد عمليات مسجّلة لهذا الشهر</p>'}
   </div>`;
 }
+
 function attendanceHistory(){
   const wname = id => { const w=workers.find(x=>x.id===id); return w?w.name:'؟'; };
   const rows = attendance.filter(a=>a.date.slice(0,7)===state.month && (!state.historyWorkerId || a.workerId===state.historyWorkerId))
     .sort((a,b)=> b.date.localeCompare(a.date) || wname(a.workerId).localeCompare(wname(b.workerId)));
   const body = rows.map(r=>{
     if(state.editAttendanceId===r.id){
-      return `<div class="list-item">
-        <div><b>${esc(wname(r.workerId))}</b> — ${r.date}
-          <div class="row" style="margin-top:6px; min-width:220px;">
-            <div><label>حضور</label><input id="att-in-${r.id}" type="time" value="${r.checkIn||''}"></div>
-            <div><label>انصراف</label><input id="att-out-${r.id}" type="time" value="${r.checkOut||''}"></div>
-          </div>
-          <label>ملاحظة</label><input id="att-note-${r.id}" value="${esc(r.notes||'')}">
+      return `<div class="list-item" style="flex-direction:column; align-items:stretch;">
+        <b>${esc(wname(r.workerId))}</b> — ${r.date}
+        <div class="row" style="margin-top:6px;">
+          <div><label>وقت الدخول</label><input id="att-in-${r.id}" type="time" value="${r.checkIn||''}"></div>
+          <div><label>وقت الخروج</label><input id="att-out-${r.id}" type="time" value="${r.checkOut||''}"></div>
         </div>
-        <div>
-          <button class="btn btn-brass btn-sm" onclick="saveAttendanceEdit('${r.id}')">حفظ</button>
+        <label>ملاحظة</label><input id="att-note-${r.id}" value="${esc(r.notes||'')}">
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-brass btn-sm" onclick="saveAttendanceEdit('${r.id}')">حفظ التعديل</button>
           <button class="btn btn-outline btn-sm" onclick="state.editAttendanceId=null; render();">إلغاء</button>
         </div>
       </div>`;
     }
-    const lateTag = isLateRecord(r) ? `<span class="badge badge-absent">متأخر</span>` : '';
+    const lateTag = isLateRecord(r) ? `<span class="badge badge-absent">متأخر</span>` : '<span class="badge badge-present">في الوقت</span>';
     return `<div class="list-item">
-      <div><b>${esc(wname(r.workerId))}</b> — ${r.date} ${r.shift?`<span class="badge badge-open">${r.shift}</span>`:''} <span class="muted">${r.checkIn||'—'} → ${r.checkOut||'—'}</span> ${lateTag}
-        ${r.notes?`<div class="muted">ملاحظة: ${esc(r.notes)}</div>`:''}
-      </div>
       <div>
+        <b>👤 ${esc(wname(r.workerId))}</b> — ${r.date} ${r.shift?`<span class="badge badge-open">${r.shift}</span>`:''}
+        <span class="muted" style="margin-right:6px;">${r.checkIn||'—'} → ${r.checkOut||'—'}</span> ${lateTag}
+        ${r.notes?`<div class="muted" style="margin-top:2px;">💬 ${esc(r.notes)}</div>`:''}
+      </div>
+      <div style="display:flex; gap:6px;">
         <button class="btn btn-outline btn-sm" onclick="state.editAttendanceId='${r.id}'; state.confirmDeleteId=null; render();">تعديل</button>
         ${state.confirmDeleteId===r.id
-          ? `<button class="btn btn-danger" onclick="deleteAttendanceRec('${r.id}')">تأكيد الحذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
-          : `<button class="btn btn-danger" onclick="state.confirmDeleteId='${r.id}'; render();">حذف</button>`}
+          ? `<button class="btn btn-danger btn-sm" onclick="deleteAttendanceRec('${r.id}')">تأكيد الحذف</button> <button class="btn btn-outline btn-sm" onclick="state.confirmDeleteId=null; render();">إلغاء</button>`
+          : `<button class="btn btn-danger btn-sm" onclick="state.confirmDeleteId='${r.id}'; render();">حذف</button>`}
       </div>
     </div>`;
   }).join('');
+
   return `<div class="card">
-    <div class="row" style="align-items:center;">
-      <h2 style="margin:0;">سجل الحضور والانصراف</h2>
-      ${monthPicker()}
-      <select onchange="state.historyWorkerId=this.value; render();">
-        <option value="">كل المتعاونين</option>
-        ${workers.map(w=>`<option value="${w.id}" ${state.historyWorkerId===w.id?'selected':''}>${esc(w.name)}</option>`).join('')}
-      </select>
+    <div class="card-header">
+      <h2>سجل الحضور والانصراف</h2>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        ${monthPicker()}
+        <select onchange="state.historyWorkerId=this.value; render();" style="max-width:180px; margin-bottom:0;">
+          <option value="">كل المتعاونين</option>
+          ${workers.map(w=>`<option value="${w.id}" ${state.historyWorkerId===w.id?'selected':''}>${esc(w.name)}</option>`).join('')}
+        </select>
+        <button class="btn btn-forest btn-sm" onclick="exportAttendanceExcel(state.month)">📊 تصدير Excel</button>
+      </div>
     </div>
-    ${body || '<p class="empty">لا يوجد سجلات لهذا الشهر</p>'}
+    ${body || '<p class="empty">لا توجد سجلات حضور لهذا الشهر</p>'}
   </div>
   ${supervisorAttendanceCard(state.month)}`;
 }
+
 function supervisorAttendanceCard(month){
   const sname = id => { const s=config.supervisors.find(x=>x.id===id); return s?s.name:'؟'; };
   const rows = supervisorAttendance.filter(a=>a.date.slice(0,7)===month)
     .sort((a,b)=> b.date.localeCompare(a.date) || sname(a.supervisorId).localeCompare(sname(b.supervisorId)));
   const body = rows.map(r=>`<div class="list-item">
-    <div><b>${esc(sname(r.supervisorId))}</b> — ${r.date} <span class="badge badge-open">${r.shift}</span> <span class="muted">${r.checkIn||'—'} → ${r.checkOut||'—'}</span></div>
+    <div><b>🎖️ ${esc(sname(r.supervisorId))}</b> — ${r.date} <span class="badge badge-open">${r.shift}</span> <span class="muted">${r.checkIn||'—'} → ${r.checkOut||'—'}</span></div>
   </div>`).join('');
   return `<div class="card">
-    <h2>حضور المشرفين</h2>
+    <h2>حضور المشرفين والمسؤولين</h2>
     ${body || '<p class="empty">لا يوجد سجلات حضور مشرفين لهذا الشهر</p>'}
   </div>`;
 }
+
 function saveAttendanceEdit(id){
   const rec = attendance.find(a=>a.id===id);
   if(!rec) return;
@@ -1616,8 +2194,10 @@ function saveAttendanceEdit(id){
   saveAttendance();
   const w = workers.find(x=>x.id===rec.workerId);
   logActivity(`${state.session.name} عدّل سجل حضور ${w?w.name:'؟'} ليوم ${rec.date}`);
+  showToast('تم حفظ التعديل بنجاح', 'success');
   render();
 }
+
 function deleteAttendanceRec(id){
   const rec = attendance.find(a=>a.id===id);
   const w = rec ? workers.find(x=>x.id===rec.workerId) : null;
@@ -1625,20 +2205,25 @@ function deleteAttendanceRec(id){
   state.confirmDeleteId = null;
   saveAttendance();
   if(rec) logActivity(`${state.session.name} حذف سجل حضور ${w?w.name:'؟'} ليوم ${rec.date}`);
+  showToast('تم حذف السجل', 'info');
   render();
 }
 
-/* ================= WORKER ================= */
+/* ================= WORKER VIEW ================= */
 function viewWorker(){
   const nc = pendingNotifCountFor(state.session.id);
-  const tabs=[['checkin','تسجيل الحضور'],['mine','سجلي'],['requests','طلباتي'],['notifications',`إشعاراتي${nc?` (${nc})`:''}`]];
+  const tabs=[
+    ['checkin','تسجيل الحضور'],['mine','أجرتي وتقييمي'],['requests','طلباتي'],
+    ['notifications',`إشعاراتي${nc?` <span class="tab-badge">${nc}</span>`:''}`]
+  ];
   let content = state.tab==='mine'? workerMine(): state.tab==='requests'? workerRequests(): state.tab==='notifications'? workerNotifications(): workerCheckin();
   return `${brandbar()}<div class="tab-bar">
     ${tabs.map(t=>`<button class="tab ${state.tab===t[0]?'active':''}" onclick="wTab('${t[0]}')">${t[1]}</button>`).join('')}
-    <button class="tab" onclick="logout()">خروج</button></div>${content}`;
+    <button class="tab" onclick="logout()" style="color:var(--burgundy-light);">خروج 🚪</button></div>${content}`;
 }
 function wTab(t){ state.tab=t; render(); }
 function computeShift(time){ return (time && time < (config.shiftSplitTime||'14:30')) ? 'صباحي' : 'مسائي'; }
+
 const DUTY_ITEMS = [
   ['page','رسائل الصفحة'], ['whatsapp','واتساب'], ['calls','مكالمات'],
   ['photo','تصوير ونشر في الصفحة'], ['display','ترتيب الواجهة'], ['cleaning','تنظيف']
@@ -1651,40 +2236,45 @@ function dutyRespText(entry){
 
 function workerCheckin(){
   const todays = attendance.filter(a=>a.workerId===state.session.id && a.date===todayStr());
-  const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px;">التسجيل يعمل فقط عند الاتصال بشبكة واي فاي المحل</p>` : '';
+  const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px;">🔒 التسجيل مشروط بالاتصال بشبكة واي فاي المحل</p>` : '';
   const shiftBlocks = ['صباحي','مسائي'].map(shift=>{
     const rec = todays.find(a=>a.shift===shift);
     let action;
-    if(!rec) action = `<button class="btn btn-brass" onclick="selfIn('${shift}')">تسجيل حضور الفوج ${shift}</button>${netNote}`;
-    else if(!rec.checkOut) action = `<div class="muted">حضرت الساعة ${rec.checkIn}</div><button class="btn btn-outline" style="margin-top:8px;" onclick="selfOut('${shift}')">تسجيل انصراف الفوج ${shift}</button>${netNote}`;
+    if(!rec) action = `<button class="btn btn-brass" style="width:100%; padding:14px; font-size:16px;" onclick="selfIn('${shift}')">تسجيل حضور الفوج ${shift}</button>${netNote}`;
+    else if(!rec.checkOut) action = `<div class="muted" style="margin-bottom:10px;">حضرت الساعة <b>${rec.checkIn}</b></div><button class="btn btn-outline" style="width:100%; padding:12px; font-size:15px;" onclick="selfOut('${shift}')">تسجيل انصراف الفوج ${shift}</button>${netNote}`;
     else {
       const mins = toMinutes(nowTime()) - toMinutes(rec.checkOut);
       const canUndo = mins!=null && mins>=0 && mins<=15;
-      action = `<div class="muted">✓ تم: حضور ${rec.checkIn} — انصراف ${rec.checkOut}</div>
-        ${canUndo?`<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="undoCheckout('${shift}')">سجّلت الانصراف بالغلط؟ تراجع</button>`
-                  :`<p class="muted" style="margin-top:6px;">إذا سجّلت الانصراف بالغلط، اطلب من صاحب المحل تعديل سجلك.</p>`}`;
+      action = `<div class="badge badge-present" style="font-size:14px; padding:8px 14px; margin-bottom:8px;">✓ تم: حضور ${rec.checkIn} — انصراف ${rec.checkOut}</div>
+        ${canUndo?`<br><button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="undoCheckout('${shift}')">سجّلت الانصراف بالخطأ؟ تراجع خلال 15 دقيقة</button>`
+                  :`<p class="muted" style="margin-top:6px;">إذا سجلت الانصراف بالخطأ، اطلب من المسؤول تعديل سجلك.</p>`}`;
     }
     let dutyCard = '';
     if(rec && rec.checkIn){
       const duty = getTodayDuty(state.session.id, shift);
       if(duty){
-        dutyCard = `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">
-          <b>مسؤولياتك:</b> <span class="muted">${esc(dutyRespText(duty) || 'ما حدّدتش أي مسؤولية')}</span>
-          <button class="btn btn-outline btn-sm" style="margin-right:6px;" onclick="editDuty('${shift}')">تعديل</button>
+        dutyCard = `<div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);">
+          <b>📋 مسؤولياتك المحددة:</b> <span class="muted">${esc(dutyRespText(duty) || 'لم تحدد أي مسؤولية')}</span>
+          <button class="btn btn-outline btn-sm" style="margin-right:8px;" onclick="editDuty('${shift}')">تعديل</button>
         </div>`;
       } else {
-        dutyCard = `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">
-          <b>مسؤوليات هذا الفوج:</b><br>
-          ${DUTY_ITEMS.map(([key,label])=>`
-          <div style="margin-bottom:8px;">
-            <label><input type="checkbox" id="duty-${key}-${shift}" style="width:auto; margin-left:6px;"> ${label}</label>
-            <input id="duty-note-${key}-${shift}" placeholder="ملاحظة (اختياري)" style="margin-top:4px;">
-          </div>`).join('')}
-          <button class="btn btn-brass btn-sm" style="margin-top:6px;" onclick="saveDuty('${shift}')">حفظ</button>
+        dutyCard = `<div style="margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);">
+          <b>📋 حدد مسؤولياتك لهذا الفوج:</b>
+          <div style="margin-top:8px;">
+            ${DUTY_ITEMS.map(([key,label])=>`
+            <div style="margin-bottom:8px;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="duty-${key}-${shift}" style="width:auto; margin:0;">
+                <span>${label}</span>
+              </label>
+              <input id="duty-note-${key}-${shift}" placeholder="ملاحظة حول ${label} (اختياري)" style="margin-top:4px; margin-bottom:4px; font-size:13px;">
+            </div>`).join('')}
+            <button class="btn btn-brass btn-sm" style="margin-top:6px;" onclick="saveDuty('${shift}')">حفظ المسؤوليات</button>
+          </div>
         </div>`;
       }
     }
-    return `<div class="card"><h3>الفوج ${shift}</h3>${action}${dutyCard}</div>`;
+    return `<div class="card" style="border-top:3px solid var(--brass);"><h3>الفوج ${shift}</h3>${action}${dutyCard}</div>`;
   }).join('');
   return `<div class="card worker-checkin-box"><div class="muted">${todayStr()}</div><div class="clock">${nowTime()}</div></div>${shiftBlocks}`;
 }
@@ -1703,8 +2293,10 @@ function saveDuty(shift){
   saveDutyLog();
   const summary = resp.map(r=> notes[r]?`${r} (${notes[r]})`:r).join('، ');
   logActivity(`${state.session.name} حدّد مسؤولياته (فوج ${shift}): ${summary||'لا شي'}`);
+  showToast('تم حفظ مسؤولياتك اليومية 👍', 'success');
   render();
 }
+
 function editDuty(shift){
   dutyLog = dutyLog.filter(d=>!(d.workerId===state.session.id && d.date===todayStr() && d.shift===shift));
   saveDutyLog(); render();
@@ -1716,12 +2308,12 @@ async function selfIn(shift){
   checkinBusy = true;
   try{
     const ok = await checkShopNetwork();
-    if(!ok){ alert('يجب الاتصال بشبكة واي فاي المحل لتسجيل الحضور'); return; }
+    if(!ok){ showToast('يجب الاتصال بشبكة واي فاي المحل لتسجيل الحضور', 'warning'); return; }
     let freshWorkers;
     try{ freshWorkers = (await fbGet(KEYS.workers)) || workers; }catch(e){ freshWorkers = workers; }
     const idx = freshWorkers.findIndex(x=>x.id===state.session.id);
     const w = freshWorkers[idx];
-    if(!w){ alert('تعذر التحقق من حسابك، أعد تحميل الصفحة وحاول مجدداً.'); return; }
+    if(!w){ showToast('تعذر التحقق من حسابك، أعد تحميل الصفحة', 'error'); return; }
     const deviceId = getDeviceId();
     if(!w.deviceLockDisabled){
       if(!w.lockedDeviceId){
@@ -1730,7 +2322,7 @@ async function selfIn(shift){
         try{ await fbSetPath(`${KEYS.workers}/${idx}/lockedDeviceId`, deviceId); ok2 = true; }catch(e){}
         if(!ok2){ try{ await fbSet(KEYS.workers, freshWorkers); }catch(e2){} }
       } else if(w.lockedDeviceId !== deviceId){
-        alert('هذا الرمز مرتبط بجهاز آخر. إذا بدّلت هاتفك، اطلب من صاحب المحل يعيد ربط جهازك من تبويب "المتعاونين".');
+        showToast('هذا الحساب مقفل على هاتف آخر. اطلب من صاحب المحل فك ربط جهازك', 'error', 5000);
         return;
       }
     }
@@ -1750,6 +2342,7 @@ async function selfIn(shift){
       shift, action: 'حضور', late: isLateRecord({checkIn: inTime, shift}) ? 'متأخر' : 'في الوقت',
       mapLink: geo ? mapLink(geo.lat, geo.lng) : ''
     });
+    showToast('تم تسجيل حضورك بنجاح ✅', 'success');
     render();
   } finally { checkinBusy = false; }
 }
@@ -1759,7 +2352,7 @@ async function selfOut(shift){
   checkinBusy = true;
   try{
     const ok = await checkShopNetwork();
-    if(!ok){ alert('يجب الاتصال بشبكة واي فاي المحل لتسجيل الانصراف'); return; }
+    if(!ok){ showToast('يجب الاتصال بشبكة واي فاي المحل لتسجيل الانصراف', 'warning'); return; }
     const rec = attendance.find(a=>a.workerId===state.session.id && a.date===todayStr() && a.shift===shift && !a.checkOut);
     if(!rec) return;
     const geo = await getGeoLocation();
@@ -1774,6 +2367,7 @@ async function selfOut(shift){
       shift, action: 'انصراف', late: '—',
       mapLink: geo ? mapLink(geo.lat, geo.lng) : ''
     });
+    showToast('تم تسجيل انصرافك بنجاح ✅', 'info');
     render();
   } finally { checkinBusy = false; }
 }
@@ -1783,7 +2377,7 @@ function undoCheckout(shift){
   if(!rec) return;
   const mins = toMinutes(nowTime()) - toMinutes(rec.checkOut);
   if(mins == null || mins < 0 || mins > 15){
-    alert('انتهت مهلة التراجع (15 دقيقة). اطلب من المسؤول أو صاحب المحل تعديل سجلك.');
+    showToast('انتهت مهلة التراجع (15 دقيقة)', 'warning');
     return;
   }
   rec.checkOut = null;
@@ -1791,6 +2385,7 @@ function undoCheckout(shift){
   rec.outLng = null;
   saveAttendance();
   logActivity(`${state.session.name} تراجع عن تسجيل الانصراف (فوج ${shift})`);
+  showToast('تم إلغاء الانصراف وإعادتك لحالة الحضور', 'success');
   render();
 }
 
@@ -1800,21 +2395,24 @@ function workerMine(){
   const myAtt = attendance.filter(a=>a.workerId===wId && a.date.slice(0,7)===state.month)
     .sort((a,b)=> b.date.localeCompare(a.date));
   const attRows = myAtt.map(r=>{
-    const lateTag = isLateRecord(r) ? `<span class="badge badge-absent">متأخر</span>` : '';
+    const lateTag = isLateRecord(r) ? `<span class="badge badge-absent">متأخر</span>` : '<span class="badge badge-present">في الوقت</span>';
     return `<div class="list-item">
-      <div><b>${r.date}</b> <span class="badge badge-open">${r.shift||'—'}</span> <span class="muted">${r.checkIn||'—'} → ${r.checkOut||'—'}</span> ${lateTag}
-        ${r.notes?`<div class="muted">ملاحظات: ${esc(r.notes)}</div>`:''}
+      <div><b>📅 ${r.date}</b> <span class="badge badge-open">${r.shift||'—'}</span> <span class="muted">${r.checkIn||'—'} → ${r.checkOut||'—'}</span> ${lateTag}
+        ${r.notes?`<div class="muted" style="margin-top:2px;">💬 ملاحظات: ${esc(r.notes)}</div>`:''}
       </div>
     </div>`;
   }).join('');
 
   return `${paydayBanner()}${lateWarningBanner(state.month, wId)}
   <div class="card">
-    <div class="row" style="align-items:center;">
-      <h2 style="margin:0;">سجل أجرتي وتقييمي</h2>
-      ${monthPicker()}
+    <div class="card-header">
+      <h2>سجل أجرتي وتقييمي</h2>
+      <div style="display:flex; gap:8px;">
+        ${monthPicker()}
+        <button class="btn btn-outline btn-sm" onclick="printPayslip('${wId}','${state.month}')">🖨️ وصل الأجرة</button>
+      </div>
     </div>
-    <div class="muted" style="margin-top:6px;">رصيد العطلة المدفوعة الأجر المتبقي لهذا العام: <b>${remainingPaidLeave(wId, state.month.slice(0,4))} يوم</b></div>
+    <div class="muted">رصيد العطلة المدفوعة الأجر المتبقي لهذا العام: <b>${remainingPaidLeave(wId, state.month.slice(0,4))} يوم</b></div>
   </div>
   ${wageDetailCard(wId, state.month, paid)}
   <div class="card">
@@ -1828,35 +2426,35 @@ function workerRequests(){
   const myReqs = requests.filter(r=>r.workerId===wId).sort((a,b)=> b.createdAt.localeCompare(a.createdAt));
   const rows = myReqs.map(r=>{
     const badge = r.status==='approved'?'badge-present': r.status==='rejected'?'badge-absent':'badge-open';
-    const statusText = r.status==='approved'?'تمت الموافقة': r.status==='rejected'?'مرفوض':'قيد الانتظار';
+    const statusText = r.status==='approved'?'تمت الموافقة ✓': r.status==='rejected'?'مرفوض ✕':'قيد الانتظار...';
     return `<div class="list-item">
       <div>
         <b>${REQ_TYPES[r.type]}</b>: ${r.amount} <span class="muted">(${r.month})</span>
-        ${r.note?`<div class="muted">${esc(r.note)}</div>`:''}
+        ${r.note?`<div class="muted">💬 ${esc(r.note)}</div>`:''}
       </div>
       <span class="badge ${badge}">${statusText}</span>
     </div>`;
   }).join('');
 
   return `<div class="card">
-    <h2>تقديم طلب جديد</h2>
+    <h2>تقديم طلب جديد للإدارة</h2>
     <div class="row">
       <div><label>نوع الطلب</label>
         <select id="req-type">
           <option value="extraDays">يوم عمل إضافي (عمل في يوم الراحة)</option>
-          <option value="live">جلسة لايف</option>
-          <option value="overtime">ساعات إضافية</option>
-          <option value="excusedAbsence">غياب مبرر (لا يُخصم)</option>
+          <option value="live">جلسة لايف (Live)</option>
+          <option value="overtime">ساعات عمل إضافية</option>
+          <option value="excusedAbsence">غياب مبرر (لا يُخصم من الراتب)</option>
           <option value="paidLeave">عطلة مدفوعة الأجر</option>
         </select>
       </div>
-      <div><label>القيمة</label><input id="req-amount" type="number" step="0.5" min="0.5" value="1"></div>
+      <div><label>القيمة أو العدد</label><input id="req-amount" type="number" step="0.5" min="0.5" value="1"></div>
     </div>
     <div class="row">
       <div><label>الشهر المعني</label><input id="req-month" type="month" value="${state.month||curMonth()}"></div>
     </div>
     <label>ملاحظة أو تبرير (اختياري)</label>
-    <input id="req-note" placeholder="اكتب سبباً أو تفاصيل إضافية...">
+    <input id="req-note" placeholder="اكتب سبباً أو تفاصيل إضافية لتسهيل الموافقة...">
     <button class="btn btn-brass" onclick="submitWorkerRequest()">إرسال الطلب</button>
   </div>
   <div class="card">
@@ -1870,8 +2468,8 @@ function submitWorkerRequest(){
   const amount = Number(document.getElementById('req-amount').value);
   const month = document.getElementById('req-month').value;
   const note = document.getElementById('req-note').value.trim();
-  if(!amount || amount<=0){ alert('أدخل قيمة صحيحة'); return; }
-  if(!month){ alert('اختر الشهر'); return; }
+  if(!amount || amount<=0){ showToast('أدخل قيمة صحيحة', 'warning'); return; }
+  if(!month){ showToast('اختر الشهر المعني', 'warning'); return; }
   addRequest(state.session.id, type, amount, note, month);
 }
 
@@ -1882,16 +2480,16 @@ function workerNotifications(){
   myNotifs.forEach(n=>{ if(!n.read){ n.read = true; hasUnread = true; } });
   if(hasUnread){ saveNotifications(); }
 
-  const rows = myNotifs.map(n=>`<div class="list-item" style="border-left: 3px solid ${n.read?'var(--line)':'var(--brass)'}; padding-left: 8px;">
+  const rows = myNotifs.map(n=>`<div class="list-item" style="border-right: 3px solid var(--brass); padding-right: 12px;">
     <div>
-      <b>${esc(n.senderName||'الإدارة')}</b> <span class="muted" style="font-size:12px;">${new Date(n.createdAt).toLocaleString('ar-DZ')}</span>
-      <div style="margin-top:4px; font-size:14.5px;">${esc(n.message)}</div>
+      <b>📩 ${esc(n.senderName||'الإدارة')}</b> <span class="muted" style="font-size:12px;">${new Date(n.createdAt).toLocaleDateString('ar-DZ')}</span>
+      <div style="margin-top:6px; font-size:15px; color:var(--ink);">${esc(n.message)}</div>
     </div>
   </div>`).join('');
 
   return `<div class="card">
-    <h2>إشعاراتي</h2>
-    ${rows || '<p class="empty">لا يوجد إشعارات</p>'}
+    <h2>صندوق الإشعارات والتنبيهات</h2>
+    ${rows || '<p class="empty">لا يوجد أي إشعارات جديدة</p>'}
   </div>`;
 }
 
