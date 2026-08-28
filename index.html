@@ -831,6 +831,367 @@ async function exportActivityToSheet(month){
   }
 }
 
+async function testSheetConnection(){
+  const url = document.getElementById('cfg-sheet') ? document.getElementById('cfg-sheet').value.trim() : (config ? config.sheetsWebhookUrl : '');
+  if(!url){ showToast('يرجى وضع رابط Google Apps Script أولاً', 'warning'); return; }
+  if(!url.includes('/macros/s/') || !url.endsWith('/exec')){
+    showToast('تنبيه: تأكد أن الرابط ينتهي بـ /exec وليس /edit', 'warning', 6000);
+  }
+  showToast('جارِ اختبار الاتصال وإرسال سطر تجريبي إلى Google Sheet...', 'info');
+  try{
+    await fetch(url, {
+      method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        type:'wages',
+        shopName: (config && config.shopName) ? config.shopName : 'تجربة الربط',
+        month: curMonth(),
+        rows:[{ workerName:'سطر اختبار الربط بنجاح', present:30, expected:30, absence:0, evalTotal:100, bonus:0, livePay:0, overtimePay:0, transport:0, grossSalary:0, total:0, paid:true }]
+      })
+    });
+    showToast('تم إرسال طلب الاختبار! افتح ملف Google Sheet للتأكد من ظهور صفحة "الأجور"', 'success', 6000);
+  }catch(e){
+    showToast('فشل الاتصال بالرابط، تحقق من صحته ومن اتصال الإنترنت', 'error');
+  }
+}
+
+async function exportAllShopsToMasterSheet(month){
+  if(!shopsRegistry || !shopsRegistry.masterSheetUrl){
+    showToast('يرجى وضع رابط شيت المدير العام أولاً من شاشة إدارة المحلات', 'warning', 5000);
+    return;
+  }
+  showToast('جارِ تجميع بيانات جميع المحلات وإرسالها لشيت المدير العام...', 'info', 4000);
+  
+  const savedConfig=config, savedWorkers=workers, savedAttendance=attendance, savedMonthly=monthly, savedPayments=payments, savedShopId=state.shopId;
+  const allRows = [];
+  const shopsSummary = [];
+
+  for(const s of shopsRegistry.shops){
+    state.shopId = s.id;
+    try{
+      const cfg = await fbGet(KEYS.config);
+      if(!cfg) continue;
+      config = cfg;
+      workers = (await fbGet(KEYS.workers)) || [];
+      attendance = (await fbGet(KEYS.attendance)) || [];
+      monthly = (await fbGet(KEYS.monthly)) || [];
+      payments = (await fbGet(KEYS.payments)) || [];
+      
+      const shopTitle = config.shopName || s.name;
+      let shopTotalWage = 0;
+      let shopTotalLate = 0;
+
+      workers.forEach(w => {
+        const c = calcWage(w.id, month);
+        const paid = isPaid(w.id, month);
+        shopTotalWage += c.rounded;
+        shopTotalLate += c.lateCount;
+        
+        allRows.push({
+          shopName: shopTitle,
+          month: month,
+          workerName: c.w.name,
+          baseSalary: c.baseSalary,
+          present: c.present,
+          expected: c.expected,
+          absence: c.absence,
+          lateCount: c.lateCount,
+          extraDays: c.rec.extraDays || 0,
+          salesScore: c.rec.salesScore || 0,
+          mediaScore: c.rec.mediaScore || 0,
+          evalTotal: c.evalTotal,
+          bonus: Math.round(c.bonus),
+          livePay: Math.round(c.livePay),
+          overtimePay: Math.round(c.overtimePay),
+          transport: c.transport,
+          grossSalary: Math.round(c.grossSalary),
+          total: c.rounded,
+          paid: paid
+        });
+      });
+
+      shopsSummary.push({
+        shopName: shopTitle,
+        workerCount: workers.length,
+        totalWage: shopTotalWage,
+        totalLate: shopTotalLate
+      });
+
+    }catch(e){
+      console.error('Error fetching shop data for', s.id, e);
+    }
+  }
+
+  config=savedConfig; workers=savedWorkers; attendance=savedAttendance; monthly=savedMonthly; payments=savedPayments; state.shopId=savedShopId;
+
+  if(!allRows.length){
+    showToast('لا توجد بيانات متاحة في أي محل لهذا الشهر', 'warning');
+    return;
+  }
+
+  try{
+    await fetch(shopsRegistry.masterSheetUrl, {
+      method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        type: 'allShopsWages',
+        month: month,
+        rows: allRows,
+        summary: shopsSummary
+      })
+    });
+    showToast(`تم تصدير أجور جميع المحلات (${allRows.length} متعاون) لشيت المدير العام بنجاح 🚀`, 'success', 6000);
+  }catch(e){
+    showToast('حدث خطأ أثناء الإرسال لشيت المدير العام', 'error');
+  }
+}
+
+async function exportAllShopsExcel(month){
+  showToast('جارِ تجميع بيانات كل المحلات وتوليد ملف Excel...', 'info');
+  const savedConfig=config, savedWorkers=workers, savedAttendance=attendance, savedMonthly=monthly, savedPayments=payments, savedShopId=state.shopId;
+  const allRows = [];
+  const shopsSummary = [];
+
+  for(const s of shopsRegistry.shops){
+    state.shopId = s.id;
+    try{
+      const cfg = await fbGet(KEYS.config);
+      if(!cfg) continue;
+      config = cfg;
+      workers = (await fbGet(KEYS.workers)) || [];
+      attendance = (await fbGet(KEYS.attendance)) || [];
+      monthly = (await fbGet(KEYS.monthly)) || [];
+      payments = (await fbGet(KEYS.payments)) || [];
+      
+      const shopTitle = config.shopName || s.name;
+      let shopTotalWage = 0;
+      let shopTotalLate = 0;
+
+      workers.forEach(w => {
+        const c = calcWage(w.id, month);
+        const paid = isPaid(w.id, month);
+        shopTotalWage += c.rounded;
+        shopTotalLate += c.lateCount;
+        
+        allRows.push([
+          shopTitle, c.w.name, c.baseSalary, `${c.present}/${c.expected}`, c.absence, c.lateCount,
+          c.rec.extraDays || 0, c.rec.salesScore || 0, c.rec.mediaScore || 0, c.evalTotal,
+          Math.round(c.bonus), Math.round(c.livePay), Math.round(c.overtimePay), c.transport,
+          c.rounded, paid ? 'مصروف' : 'غير مصروف'
+        ]);
+      });
+
+      shopsSummary.push([
+        shopTitle, workers.length, shopTotalWage, shopTotalLate
+      ]);
+
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  config=savedConfig; workers=savedWorkers; attendance=savedAttendance; monthly=savedMonthly; payments=savedPayments; state.shopId=savedShopId;
+
+  if(!allRows.length){
+    showToast('لا توجد بيانات متاحة للتصدير', 'warning');
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // 1. ورقة ملخص الفروع
+  const summaryData = [
+    [`الملخص العام لجميع المحلات — شهر ${month}`],
+    [`تاريخ التصدير: ${todayStr()}`],
+    [],
+    ['المحل', 'عدد المتعاونين', 'إجمالي الأجور (دج)', 'عدد التأخيرات']
+  ];
+  let grandTotalWages = 0;
+  let grandTotalWorkers = 0;
+  shopsSummary.forEach(r => {
+    summaryData.push(r);
+    grandTotalWorkers += r[1];
+    grandTotalWages += r[2];
+  });
+  summaryData.push([]);
+  summaryData.push(['الإجمالي العام لكل المحلات', grandTotalWorkers, grandTotalWages, '']);
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+  wsSummary['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 20 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'ملخص_المحلات');
+
+  // 2. ورقة تفاصيل كل المتعاونين
+  const detailedData = [
+    [`كشف أجور وتفاصيل جميع المتعاونين في كل المحلات — ${month}`],
+    [`تاريخ التصدير: ${todayStr()}`],
+    [],
+    [
+      'المحل', 'المتعاون', 'الراتب الأساسي', 'الحضور', 'الغياب', 'التأخر',
+      'إضافي', 'مبيعات', 'ميديا', 'التقييم', 'المكافأة', 'اللايف', 'إضافي س', 'النقل',
+      'الراتب الصافي', 'حالة الصرف'
+    ]
+  ];
+  allRows.forEach(r => detailedData.push(r));
+  detailedData.push([]);
+  detailedData.push(['المجموع الكلي للأجور لجميع المحلات', '', '', '', '', '', '', '', '', '', '', '', '', '', grandTotalWages, '']);
+  const wsDetailed = XLSX.utils.aoa_to_sheet(detailedData);
+  wsDetailed['!cols'] = [
+    { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
+    { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 12 },
+    { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 14 }
+  ];
+  XLSX.utils.book_append_sheet(wb, wsDetailed, 'أجور_جميع_المحلات');
+
+  XLSX.writeFile(wb, `أجور_جميع_محلات_الفتح_${month}.xlsx`);
+  showToast('تم تحميل كشف أجور جميع المحلات بصيغة Excel 📊', 'success');
+}
+
+const APPS_SCRIPT_CODE = `function doPost(e) {
+  try {
+    var contents = e.postData.contents;
+    var data = JSON.parse(contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // 1. تصدير أجور جميع المحلات مجمعة للمدير العام (شامل كل الفروع)
+    if (data.type === 'allShopsWages') {
+      var sheetName = "أجور_كل_المحلات_" + (data.month || "عام");
+      var sheet = ss.getSheetByName(sheetName);
+      if (sheet) {
+        sheet.clear(); // تفريغ لتحديث البيانات بدقة دون تكرار
+      } else {
+        sheet = ss.insertSheet(sheetName);
+      }
+      
+      // الترويسة الرئيسية
+      sheet.appendRow([
+        "المحل", "الشهر", "اسم المتعاون", "الراتب الأساسي (دج)", "أيام الحضور", "أيام الشهر", "الغياب المحتسب", "مرات التأخر",
+        "أيام إضافية", "نقاط المبيعات (/50)", "نقاط الميديا (/50)", "مجموع التقييم (/100)", "مكافأة التقييم (دج)",
+        "اللايف (دج)", "الساعات الإضافية (دج)", "النقل (دج)", "الراتب الخام (دج)", "الراتب الصافي المقرب (دج)", "حالة الصرف", "تاريخ التصدير"
+      ]);
+      sheet.getRange(1, 1, 1, 20).setBackground("#1B263B").setFontColor("#FFFFFF").setFontWeight("bold");
+      
+      var now = new Date();
+      var grandTotal = 0;
+      if (data.rows && data.rows.length > 0) {
+        for (var i = 0; i < data.rows.length; i++) {
+          var r = data.rows[i];
+          grandTotal += (r.total || 0);
+          sheet.appendRow([
+            r.shopName || "", r.month || data.month || "", r.workerName || "", r.baseSalary || 0,
+            r.present || 0, r.expected || 30, r.absence || 0, r.lateCount || 0, r.extraDays || 0,
+            r.salesScore || 0, r.mediaScore || 0, r.evalTotal || 0, r.bonus || 0,
+            r.livePay || 0, r.overtimePay || 0, r.transport || 0, r.grossSalary || 0,
+            r.total || 0, r.paid ? "مصروف" : "غير مصروف", now
+          ]);
+        }
+        sheet.appendRow([]);
+        sheet.appendRow(["المجموع الكلي لجميع المحلات", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", grandTotal, "", ""]);
+        var lastRow = sheet.getLastRow();
+        sheet.getRange(lastRow, 1, 1, 20).setBackground("#EDE7D8").setFontWeight("bold");
+      }
+      
+      // ورقة ملخص الفروع
+      var sumSheet = ss.getSheetByName("ملخص_فروع_" + (data.month || "عام"));
+      if (sumSheet) { sumSheet.clear(); } else { sumSheet = ss.insertSheet("ملخص_فروع_" + (data.month || "عام")); }
+      sumSheet.appendRow(["المحل", "عدد المتعاونين", "إجمالي الأجور (دج)", "عدد التأخيرات"]);
+      sumSheet.getRange(1, 1, 1, 4).setBackground("#A87919").setFontColor("#FFFFFF").setFontWeight("bold");
+      if (data.summary && data.summary.length > 0) {
+        for (var s = 0; s < data.summary.length; s++) {
+          var sm = data.summary[s];
+          sumSheet.appendRow([sm.shopName, sm.workerCount, sm.totalWage, sm.totalLate]);
+        }
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", totalWorkers: data.rows.length })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 2. تصدير أجور محل واحد
+    else if (data.type === 'wages') {
+      var sheetName = "الأجور_" + (data.month || "عام");
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet) {
+        sheet = ss.insertSheet(sheetName);
+        sheet.appendRow([
+          "المحل", "الشهر", "اسم المتعاون", "أيام الحضور", "أيام الشهر", "الغياب",
+          "أيام إضافية", "نقاط المبيعات", "نقاط الميديا", "مجموع التقييم", "مكافأة التقييم (دج)",
+          "اللايف (دج)", "الساعات الإضافية (دج)", "النقل (دج)", "الراتب الخام (دج)", "الراتب الصافي (دج)", "حالة الصرف", "تاريخ التصدير"
+        ]);
+        sheet.getRange(1, 1, 1, 18).setBackground("#1B263B").setFontColor("#FFFFFF").setFontWeight("bold");
+      }
+      var now = new Date();
+      if (data.rows && data.rows.length > 0) {
+        for (var i = 0; i < data.rows.length; i++) {
+          var r = data.rows[i];
+          sheet.appendRow([
+            data.shopName || "", r.month || data.month || "", r.workerName || "",
+            r.present || 0, r.expected || 30, r.absence || 0, r.extraDays || 0,
+            r.salesScore || 0, r.mediaScore || 0, r.evalTotal || 0, r.bonus || 0,
+            r.livePay || 0, r.overtimePay || 0, r.transport || 0, r.grossSalary || 0,
+            r.total || 0, r.paid ? "مصروف" : "غير مصروف", now
+          ]);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 3. سجل الحضور اللحظي للمحلات
+    else if (data.type === 'masterAttendance') {
+      var sheet = ss.getSheetByName("سجل_الحضور");
+      if (!sheet) {
+        sheet = ss.insertSheet("سجل_الحضور");
+        sheet.appendRow(["التاريخ", "الوقت", "المحل", "الاسم", "الصفة", "الفوج", "الإجراء", "الانضباط", "رابط الخريطة"]);
+        sheet.getRange(1, 1, 1, 9).setBackground("#15803D").setFontColor("#FFFFFF").setFontWeight("bold");
+      }
+      if (data.rows && data.rows.length > 0) {
+        for (var j = 0; j < data.rows.length; j++) {
+          var row = data.rows[j];
+          sheet.appendRow([
+            row.date || "", row.time || "", data.shopName || "", row.name || "",
+            row.role || "", row.shift || "", row.action || "", row.late || "", row.mapLink || ""
+          ]);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 4. السجل العام
+    else if (data.type === 'activity') {
+      var sheet = ss.getSheetByName("السجل_العام");
+      if (!sheet) {
+        sheet = ss.insertSheet("السجل_العام");
+        sheet.appendRow(["المحل", "التاريخ", "الوقت", "الفاعل", "الحدث"]);
+        sheet.getRange(1, 1, 1, 5).setBackground("#A87919").setFontColor("#FFFFFF").setFontWeight("bold");
+      }
+      if (data.rows && data.rows.length > 0) {
+        for (var k = 0; k < data.rows.length; k++) {
+          var a = data.rows[k];
+          sheet.appendRow([data.shopName || "", a.date || "", a.time || "", a.actor || "", a.action || ""]);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "unknown_type" })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+async function copyAppsScriptCode(){
+  try{
+    await navigator.clipboard.writeText(APPS_SCRIPT_CODE);
+    showToast('تم نسخ كود Google Apps Script بنجاح! الصقه في الشيت 📋', 'success');
+  }catch(e){
+    prompt('انسخ هذا الكود:', APPS_SCRIPT_CODE);
+  }
+}
+
+async function copyAppsScriptCode(){
+  try{
+    await navigator.clipboard.writeText(APPS_SCRIPT_CODE);
+    showToast('تم نسخ كود Google Apps Script بنجاح! الصقه في الشيت 📋', 'success');
+  }catch(e){
+    prompt('انسخ هذا الكود:', APPS_SCRIPT_CODE);
+  }
+}
+
 function exportActivityCSV(month){
   const rows = activityLog.filter(a=> a.at.slice(0,7)===month).sort((a,b)=> a.at.localeCompare(b.at));
   let csv = '\uFEFF' + 'التاريخ,الوقت,الفاعل,الحدث\n';
@@ -1046,6 +1407,15 @@ async function openAllShopsOverview(){
   state.screen = 'allshops';
   render();
 }
+async function changeAllShopsMonth(m){
+  state.allShopsMonth = m;
+  state.screen = 'loading';
+  document.getElementById('app').innerHTML = '<div class="empty">جارِ تحديث بيانات كل المحلات...</div>';
+  state.allShopsData = await loadAllShopsOverview(m);
+  state.screen = 'allshops';
+  render();
+}
+
 function viewAllShopsOverview(){
   const rows = state.allShopsData.map(r=>{
     if(r.notSetup) return `<tr><td><b>${esc(r.name)}</b></td><td colspan="4" class="muted">لم يُعدّ بعد</td></tr>`;
@@ -1060,17 +1430,28 @@ function viewAllShopsOverview(){
   }).join('');
   const grandTotal = state.allShopsData.reduce((s,r)=>s+(r.totalWage||0),0);
   const grandWorkers = state.allShopsData.reduce((s,r)=>s+(r.workerCount||0),0);
-  return `<div class="login-wrap" style="max-width:850px;">
+  return `<div class="login-wrap" style="max-width:920px;">
     <div class="card">
       <div class="card-header">
-        <h2>نظرة عامة على كل المحلات — ${state.allShopsMonth}</h2>
+        <div>
+          <h2 style="margin:0;">نظرة عامة على كل المحلات — ${state.allShopsMonth}</h2>
+          <div class="muted" style="margin-top:2px;">لوحة تحكم المدير العام لشيت المحلات المركزية</div>
+        </div>
         <button class="btn btn-outline btn-sm" onclick="backToShopSelect()">رجوع لاختيار المحل</button>
       </div>
+
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:14px; padding:10px; background:var(--paper-subtle); border-radius:var(--radius-sm);">
+        <label style="margin:0; font-weight:700;">الشهر:</label>
+        <input type="month" value="${state.allShopsMonth}" onchange="changeAllShopsMonth(this.value)" style="max-width:180px; margin-bottom:0;">
+        <button class="btn btn-forest btn-sm" onclick="exportAllShopsToMasterSheet(state.allShopsMonth)">🚀 تصدير كل المحلات لشيت المدير العام</button>
+        <button class="btn btn-brass btn-sm" onclick="exportAllShopsExcel(state.allShopsMonth)">📊 تنزيل كل المحلات Excel (.xlsx)</button>
+      </div>
+
       <div class="table-responsive">
         <table class="ledger">
           <thead><tr><th>المحل</th><th>عدد المتعاونين</th><th>إجمالي الأجور</th><th>عدد التأخيرات</th><th>نسبة التأخر</th></tr></thead>
           <tbody>${rows || `<tr><td colspan="5" class="empty">لا يوجد محلات</td></tr>`}</tbody>
-          <tfoot><tr class="total-row"><td>الإجمالي العام</td><td>${grandWorkers}</td><td class="amt">${fmt(grandTotal)} دج</td><td colspan="2"></td></tr></tfoot>
+          <tfoot><tr class="total-row"><td>الإجمالي العام لكل الفروع</td><td>${grandWorkers} متعاون</td><td class="amt">${fmt(grandTotal)} دج</td><td colspan="2"></td></tr></tfoot>
         </table>
       </div>
     </div>
@@ -1362,8 +1743,9 @@ function ownerOverview(){
       <h2>ملخص أجور المتعاونين</h2>
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         ${monthPicker()}
-        <button class="btn btn-forest btn-sm" onclick="exportWagesExcel(state.month)">📊 تصدير Excel (.xlsx)</button>
-        <button class="btn btn-outline btn-sm" onclick="exportToSheet(state.month)">Google Sheet</button>
+        <button class="btn btn-forest btn-sm" onclick="exportWagesExcel(state.month)">📊 تصدير هذا المحل Excel</button>
+        <button class="btn btn-outline btn-sm" onclick="exportToSheet(state.month)">Google Sheet (هذا المحل)</button>
+        <button class="btn btn-brass btn-sm" onclick="exportAllShopsToMasterSheet(state.month)">🏢 تصدير كل المحلات لشيت المدير العام</button>
       </div>
     </div>
     <div style="margin-bottom:12px;">
@@ -1627,13 +2009,34 @@ function ownerSettings(){
   </div>
 
   <div class="card">
-    <h2>ربط Google Sheet الخاص بهذا الفرع</h2>
-    <div class="row"><div><label>رابط Google Apps Script</label><input id="cfg-sheet" value="${esc(config.sheetsWebhookUrl||'')}" placeholder="https://script.google.com/macros/s/.../exec"></div></div>
+    <h2>📊 ربط Google Sheet ومزامنة السحابة</h2>
+    <div class="row"><div><label>رابط Google Apps Script المنشور كـ Web App</label><input id="cfg-sheet" value="${esc(config.sheetsWebhookUrl||'')}" placeholder="https://script.google.com/macros/s/.../exec"></div></div>
+    
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+      <button class="btn btn-brass" onclick="saveSheetSettings()">حفظ رابط الشيت</button>
+      <button class="btn btn-forest" onclick="testSheetConnection()">🧪 فحص واختبار الاتصال بالشيت</button>
+      <button class="btn btn-outline" onclick="copyAppsScriptCode()">📋 نسخ كود Google Apps Script الجاهز</button>
+    </div>
+
     <label style="display:flex; align-items:center; gap:8px; font-weight:600; color:var(--ink-light); margin-bottom:12px;">
       <input type="checkbox" id="cfg-autosync" ${config.autoSyncSheet?'checked':''} style="width:auto; margin:0;">
-      تفعيل المزامنة الفورية للسجل العام مع Google Sheet
+      تفعيل المزامنة الفورية التلقائية للسجل العام مع Google Sheet
     </label>
-    <button class="btn btn-brass" onclick="saveSheetSettings()">حفظ إعدادات الربط</button>
+
+    <details class="rubric-box" style="margin-top:10px;">
+      <summary>❓ كيف يتم الربط بالشيت بنجاح بدون مشاكل؟ (خطوات سريعة)</summary>
+      <div class="rubric">
+        <ol style="margin:0; padding-inline-start:20px; line-height:1.7;">
+          <li>افتح جدول بيانات Google Sheet جديد.</li>
+          <li>اضغط في القائمة العلوية على <b>ملحقات (Extensions) ← Apps Script</b>.</li>
+          <li>احذف أي كود موجود، واضغط على زر <b>«📋 نسخ كود Google Apps Script الجاهز»</b> أعلاه والصقه هناك.</li>
+          <li>اضغط على <b>نشر (Deploy) ← نشر جديد (New deployment)</b>.</li>
+          <li>اختر نوع النشر: <b>تطبيق ويب (Web app)</b>.</li>
+          <li><b style="color:var(--burgundy);">مهم جداً:</b> في خانة <b>«من يملك حق الوصول (Who has access)»</b>، اختر حتماً: <b>«أي شخص (Anyone)»</b> وليس حسابك فقط.</li>
+          <li>اضغط <b>Deploy</b> وانسخ رابط تطبيق الويب الذي ينتهي بـ <code>/exec</code> والصقه في الخانة أعلاه واضغط حفظ.</li>
+        </ol>
+      </div>
+    </details>
   </div>
 
   <div class="card">
