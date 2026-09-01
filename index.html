@@ -9,6 +9,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Markazi+Text:wght@500;600;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <!-- SheetJS for real Excel (.xlsx) export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- QRCode.js and jsQR for QR Code generation and camera scanning -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
   :root {
     --paper: #F6F3EB;
@@ -397,9 +400,25 @@
     background: var(--paper-subtle); cursor: pointer; font-size: 13px; font-weight: 700;
     text-align: center; transition: var(--transition); user-select: none;
   }
-  .duty-chip.active {
-    background: var(--forest-bg); border-color: var(--forest); color: var(--forest);
-    box-shadow: 0 2px 6px rgba(21,128,61,0.15);
+  /* QR Code & Scanner Styles */
+  .qr-scan-laser {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #22C55E, transparent);
+    box-shadow: 0 0 14px #22C55E;
+    animation: qrScanMove 2s ease-in-out infinite alternate;
+  }
+  @keyframes qrScanMove {
+    0% { top: 10%; }
+    100% { top: 90%; }
+  }
+  .qr-scanner-frame {
+    position: relative; width: 100%; max-width: 320px; aspect-ratio: 1/1;
+    border-radius: var(--radius-lg); overflow: hidden; border: 2px solid var(--brass-light);
+    box-shadow: 0 0 30px rgba(212,175,55,0.35); background: #000;
+  }
+  .qr-box-preview {
+    background: #fff; padding: 14px; border: 2px solid var(--brass);
+    border-radius: var(--radius-md); box-shadow: var(--shadow-sm); display: inline-block;
   }
 </style>
 </head>
@@ -407,6 +426,22 @@
 
 <div id="toast-container"></div>
 <div id="app"><div class="empty">جارِ التحميل...</div></div>
+
+<!-- Fullscreen In-App QR Scanner Camera Modal -->
+<div id="qr-scanner-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(10,15,25,0.96); z-index:99999; flex-direction:column; align-items:center; justify-content:center; color:#fff; padding:20px;">
+  <div style="width:100%; max-width:340px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <div style="font-weight:800; font-size:18px;">📷 مسح رمز QR للمحل</div>
+    <button class="btn btn-danger btn-sm" onclick="closeQRScanner()">إلغاء ✕</button>
+  </div>
+  <div class="qr-scanner-frame">
+    <video id="qr-video" playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+    <canvas id="qr-canvas" style="display:none;"></canvas>
+    <div class="qr-scan-laser"></div>
+  </div>
+  <div style="margin-top:20px; font-size:14px; opacity:0.9; text-align:center; max-width:320px; line-height:1.5;">
+    وجّه كاميرا هاتفك نحو ملصق الباركود المعلق في المحل ليتم تسجيل حضورك في ثانية واحدة ✓
+  </div>
+</div>
 
 <script>
 /* ====== TOAST NOTIFICATION SYSTEM (بديل احترافي لـ alert) ====== */
@@ -435,8 +470,17 @@ function setFavicon(href){
   link.href = href;
 }
 
+const DEFAULT_LOGO_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><defs><linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23D4AF37"/><stop offset="50%" stop-color="%23A87919"/><stop offset="100%" stop-color="%236B4A09"/></linearGradient><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231B263B"/><stop offset="100%" stop-color="%230F172A"/></linearGradient></defs><circle cx="100" cy="100" r="92" fill="url(%23bg)" stroke="url(%23gold)" stroke-width="6"/><circle cx="100" cy="100" r="82" fill="none" stroke="%23D4AF37" stroke-width="1.5" stroke-dasharray="4,4"/><path d="M100 28 L103 36 L111 37 L105 43 L107 51 L100 47 L93 51 L95 43 L89 37 L97 36 Z" fill="%23D4AF37"/><text x="100" y="118" font-family="'Cairo','Markazi Text',serif" font-size="44" font-weight="900" fill="url(%23gold)" text-anchor="middle">الفتح</text><text x="100" y="146" font-family="'Cairo',sans-serif" font-size="12" font-weight="700" fill="%23D4AF37" letter-spacing="3" text-anchor="middle">EL FATH</text></svg>`;
+
+function getAppLogo(){
+  if(typeof config !== 'undefined' && config && config.customLogo && config.customLogo.trim()){
+    return config.customLogo.trim();
+  }
+  return DEFAULT_LOGO_SVG;
+}
+
 const KEYS = { config:'config', workers:'workers', attendance:'attendance', monthly:'monthlyRecords', payments:'payments', requests:'requests', activity:'activityLog', duty:'dutyLog', supAttendance:'supervisorAttendance', notifications:'notifications' };
-const LOGO = "https://e.top4top.io/p_3890z6ga61.png";
+const LOGO = DEFAULT_LOGO_SVG;
 setFavicon(LOGO);
 
 /* ====== Firebase Realtime Database Config ====== */
@@ -451,16 +495,43 @@ const DEFAULT_SHOPS = [
 const DEFAULT_MASTER_SHEET_URL = "https://script.google.com/macros/s/AKfycbyMYwOtQx48RRQbICXd0rZVOY6M6MlS4J9BWEkLzMGhXbh0VekHq8pJmS6e-5CG-DShvA/exec";
 let shopsRegistry = { masterPin:null, masterSheetUrl: DEFAULT_MASTER_SHEET_URL, shops:[] };
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 5000){
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
 async function fbGetRaw(path){
-  const res = await fetch(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/${path}.json`);
-  if(!res.ok) throw new Error('fb get raw failed: '+res.status);
-  return await res.json();
+  try {
+    const res = await fetchWithTimeout(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/${path}.json`);
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(e) {
+    console.warn('fbGetRaw timeout/error:', e);
+    return null;
+  }
 }
+
 async function fbSetRaw(path, value){
-  const res = await fetch(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/${path}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value) });
-  if(!res.ok) throw new Error('fb set raw failed: '+res.status);
-  return await res.json();
+  try {
+    const res = await fetchWithTimeout(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/${path}.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value)
+    });
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(e) {
+    console.warn('fbSetRaw error:', e);
+    return null;
+  }
 }
+
 async function loadShopsRegistry(){
   try{
     const r = await fbGetRaw('shopsRegistry');
@@ -472,37 +543,68 @@ async function loadShopsRegistry(){
       }
     } else {
       shopsRegistry = { masterPin:null, masterSheetUrl: DEFAULT_MASTER_SHEET_URL, shops:DEFAULT_SHOPS.slice() };
-      await fbSetRaw('shopsRegistry', shopsRegistry);
+      fbSetRaw('shopsRegistry', shopsRegistry).catch(()=>{});
     }
   }catch(e){
     shopsRegistry = { masterPin:null, masterSheetUrl: DEFAULT_MASTER_SHEET_URL, shops:DEFAULT_SHOPS.slice() };
   }
 }
+
 function shopBase(){ return `${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/shops/${state.shopId}`; }
+
 async function fbGet(key){
-  const res = await fetch(`${shopBase()}/${key}.json`);
-  if(!res.ok) throw new Error('fb get failed: '+res.status);
-  return await res.json();
+  try {
+    const res = await fetchWithTimeout(`${shopBase()}/${key}.json`);
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(e) {
+    console.warn(`fbGet(${key}) error:`, e);
+    return null;
+  }
 }
+
 async function fbSet(key, value){
-  const res = await fetch(`${shopBase()}/${key}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value) });
-  if(!res.ok) throw new Error('fb set failed: '+res.status);
-  return await res.json();
+  try {
+    const res = await fetchWithTimeout(`${shopBase()}/${key}.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value)
+    });
+    if(!res.ok) throw new Error('fb set failed: '+res.status);
+    return await res.json();
+  } catch(e) {
+    console.error(`fbSet(${key}) error:`, e);
+    throw e;
+  }
 }
+
 async function fbSetPath(path, value){
-  const res = await fetch(`${shopBase()}/${path}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value) });
-  if(!res.ok) throw new Error('fb set path failed: '+res.status);
-  return await res.json();
+  try {
+    const res = await fetchWithTimeout(`${shopBase()}/${path}.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value)
+    });
+    if(!res.ok) throw new Error('fb set path failed: '+res.status);
+    return await res.json();
+  } catch(e) {
+    console.error(`fbSetPath(${path}) error:`, e);
+    throw e;
+  }
 }
+
 async function fbGetForShop(shopId, key){
-  const res = await fetch(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/shops/${shopId}/${key}.json`);
-  if(!res.ok) throw new Error('fb get for shop failed: '+res.status);
-  return await res.json();
+  try {
+    const res = await fetchWithTimeout(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/shops/${shopId}/${key}.json`);
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(e) { return null; }
 }
+
 async function fbSetForShop(shopId, key, value){
-  const res = await fetch(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/shops/${shopId}/${key}.json`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value) });
-  if(!res.ok) throw new Error('fb set for shop failed: '+res.status);
-  return await res.json();
+  try {
+    const res = await fetchWithTimeout(`${FIREBASE_URL}/${FIREBASE_SECRET_PATH}/shops/${shopId}/${key}.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(value)
+    });
+    if(!res.ok) throw new Error('fb set for shop failed: '+res.status);
+    return await res.json();
+  } catch(e) { throw e; }
 }
 
 let state = {
@@ -536,37 +638,49 @@ function getDeviceId(){
 function getGeoLocation(){
   return new Promise(resolve=>{
     if(!navigator.geolocation){ resolve(null); return; }
-    const timer = setTimeout(()=>resolve(null), 6000);
+    const timer = setTimeout(()=>resolve(null), 5000);
     navigator.geolocation.getCurrentPosition(
       pos=>{ clearTimeout(timer); resolve({lat:pos.coords.latitude, lng:pos.coords.longitude}); },
       ()=>{ clearTimeout(timer); resolve(null); },
-      { enableHighAccuracy:true, timeout:5500, maximumAge:60000 }
+      { enableHighAccuracy:true, timeout:4500, maximumAge:60000 }
     );
   });
 }
 function mapLink(lat,lng){ return `https://www.google.com/maps?q=${lat},${lng}`; }
 
 async function loadAll(){
-  try{ config = await fbGet(KEYS.config); }catch(e){ config=null; }
-  try{ workers = (await fbGet(KEYS.workers)) || []; }catch(e){ workers=[]; }
-  try{ attendance = (await fbGet(KEYS.attendance)) || []; }catch(e){ attendance=[]; }
-  try{ monthly = (await fbGet(KEYS.monthly)) || []; }catch(e){ monthly=[]; }
-  try{ payments = (await fbGet(KEYS.payments)) || []; }catch(e){ payments=[]; }
-  try{ requests = (await fbGet(KEYS.requests)) || []; }catch(e){ requests=[]; }
-  try{ activityLog = (await fbGet(KEYS.activity)) || []; }catch(e){ activityLog=[]; }
-  try{ dutyLog = (await fbGet(KEYS.duty)) || []; }catch(e){ dutyLog=[]; }
-  try{ supervisorAttendance = (await fbGet(KEYS.supAttendance)) || []; }catch(e){ supervisorAttendance=[]; }
-  try{ notifications = (await fbGet(KEYS.notifications)) || []; }catch(e){ notifications=[]; }
-  state.month = curMonth();
-  if(!config){
-    state.screen = 'setup';
-  } else {
-    const autoOk = tryAutoLogin();
-    if(!autoOk){
-      state.screen = 'login';
+  try {
+    // جلب جميع بيانات المحل بطلب شبكة واحد فائق السرعة
+    const shopData = await fbGetRaw(`shops/${state.shopId}`);
+    if(shopData){
+      config = shopData.config || null;
+      workers = shopData.workers || [];
+      attendance = shopData.attendance || [];
+      monthly = shopData.monthlyRecords || [];
+      payments = shopData.payments || [];
+      requests = shopData.requests || [];
+      activityLog = shopData.activityLog || [];
+      dutyLog = shopData.dutyLog || [];
+      supervisorAttendance = shopData.supervisorAttendance || [];
+      notifications = shopData.notifications || [];
+    } else {
+      config = null; workers = []; attendance = []; monthly = []; payments = [];
+      requests = []; activityLog = []; dutyLog = []; supervisorAttendance = []; notifications = [];
     }
+  } catch(e) {
+    console.error('loadAll error:', e);
+  } finally {
+    state.month = curMonth();
+    if(!config){
+      state.screen = 'setup';
+    } else {
+      const autoOk = tryAutoLogin();
+      if(!autoOk){
+        state.screen = 'login';
+      }
+    }
+    render();
   }
-  render();
 }
 async function persist(key, value){
   try{ await fbSet(key, value); }
@@ -1501,7 +1615,7 @@ function exportActivityCSV(month){
 function topBar(){
   return `<div class="topbar">
     <div class="topbar-brand">
-      <img src="${LOGO}" alt="الفتح">
+      <img src="${getAppLogo()}" alt="الفتح" onerror="this.onerror=null; this.src='${DEFAULT_LOGO_SVG}';">
       <span>الفتح — دفتر تقييم وأجور المتعاونين</span>
     </div>
     ${state.session ? `<div style="font-size:13px; opacity:0.9;">${esc(state.session.name)}</div>` : ''}
@@ -1664,17 +1778,26 @@ function handleAppSwipe(){
 function render(){
   const app=document.getElementById('app');
   let body='';
-  if(state.screen==='shopselect') body=viewShopSelect();
+  if(state.screen==='loading') body='<div class="empty" style="padding:60px 20px; text-align:center; font-size:18px;">⏳ جارِ التحميل والاتصال بقاعدة البيانات...</div>';
+  else if(state.screen==='shopselect') body=viewShopSelect();
   else if(state.screen==='allshops') body=viewAllShopsOverview();
   else if(state.screen==='setup') body=viewSetup();
   else if(state.screen==='login') body=viewLogin();
   else if(state.screen==='owner') body=viewOwner();
   else if(state.screen==='supervisor') body=viewSupervisor();
   else if(state.screen==='worker') body=viewWorker();
+  else body=viewShopSelect();
+  
   app.innerHTML = topBar() + body;
   
   attachTabBarDrag();
   initSwipeGestures();
+  
+  setTimeout(() => {
+    if(document.getElementById('shop-qr-preview')){
+      renderShopQRToElement('shop-qr-preview', 180);
+    }
+  }, 40);
 }
 
 function viewShopSelect(){
@@ -1734,7 +1857,7 @@ function viewShopSelect(){
   }
   return `<div class="login-wrap">
     <div class="card" style="text-align:center;">
-      <img src="${LOGO}" alt="شعار" style="height:85px; width:auto; margin-bottom:10px;">
+      <img src="${getAppLogo()}" alt="شعار" style="height:85px; width:auto; margin-bottom:10px;" onerror="this.onerror=null; this.src='${DEFAULT_LOGO_SVG}';">
       <h1 class="serif" style="margin:0; font-size:28px;">دفتر تقييم وأجور المتعاونين</h1>
       <p class="muted">اختر المحل للدخول أو إدارة الحضور والأجور</p>
     </div>
@@ -1905,7 +2028,7 @@ function viewSetup(){
   const shopLabel = (shopsRegistry.shops.find(s=>s.id===state.shopId)||{}).name || '';
   return `<div class="login-wrap"><div class="card">
     <div style="text-align:center;">
-      <img src="${LOGO}" alt="شعار المحل" style="height:75px; width:auto; margin-bottom:10px;">
+      <img src="${getAppLogo()}" alt="شعار المحل" style="height:75px; width:auto; margin-bottom:10px;" onerror="this.onerror=null; this.src='${DEFAULT_LOGO_SVG}';">
       <h2 class="serif" style="margin:0 0 6px;">إعداد ${esc(shopLabel)} لأول مرة</h2>
       <p class="muted">هذه الخطوة تُنشئ قاعدة بيانات هذا الفرع ورمز الدخول الخاص بصاحب المحل.</p>
     </div>
@@ -1950,7 +2073,9 @@ function tryAutoLogin(){
       if(saved && saved.workerId && saved.pin){
         const w = workers.find(x=>x.id===saved.workerId);
         if(w && w.pin === saved.pin){
-          doLoginWorker(w.id, w.pin, true);
+          state.session = { role: 'worker', id: w.id, name: w.name };
+          state.screen = 'worker';
+          state.tab = 'checkin';
           return true;
         }
       }
@@ -2011,7 +2136,7 @@ function viewLogin(){
   }
   return `<div class="login-wrap">
     <div class="card" style="text-align:center;">
-      <img src="${LOGO}" alt="شعار المحل" style="height:85px; width:auto; margin-bottom:8px;">
+      <img src="${getAppLogo()}" alt="شعار المحل" style="height:85px; width:auto; margin-bottom:8px;" onerror="this.onerror=null; this.src='${DEFAULT_LOGO_SVG}';">
       <h1 class="serif" style="margin:0;">${esc(config.shopName)}</h1>
       <p class="muted" style="margin-bottom:12px;">دفتر تقييم وأجور المتعاونين</p>
       ${config.shopMapLink?`<p><a href="${esc(config.shopMapLink)}" target="_blank" style="color:var(--brass); text-decoration:none; font-weight:700;">📍 موقع المحل على الخريطة</a></p>`:''}
@@ -2520,6 +2645,9 @@ function ownerSettings(){
       <div><label>اسم المحل</label><input id="cfg-shop" value="${esc(config.shopName)}"></div>
       <div><label>رمز دخول صاحب المحل</label><input id="cfg-pin" value="${esc(config.ownerPin)}"></div>
     </div>
+    <div class="row">
+      <div><label>رابط شعار المحل (أو اتركه فارغاً للشعار الذهبي الأصلي)</label><input id="cfg-logo" value="${esc(config.customLogo||'')}" placeholder="https://... رابط صورة الشعار PNG أو JPG"></div>
+    </div>
     <button class="btn btn-brass" onclick="saveSettings()">حفظ جميع الإعدادات</button>
   </div>
 
@@ -2563,6 +2691,24 @@ function ownerSettings(){
   </div>
 
   <div class="card">
+    <div class="card-header">
+      <h2>📷 رمز QR المحل لتسجيل الحضور السريع</h2>
+    </div>
+    <p class="muted">اطبع ملصق الباركود هذا وعلقه في المحل (عند المدخل أو الكاشير). يستطيع المتعاونون مسحه بكاميرا هواتفهم لتسجيل حضورهم وانصرافهم في ثانية واحدة دون كتابة أي شيء.</p>
+    <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap; margin:16px 0; background:var(--paper-subtle); padding:16px; border-radius:var(--radius-lg); border:1.5px solid var(--line);">
+      <div id="shop-qr-preview" class="qr-box-preview"></div>
+      <div style="flex:1; min-width:240px;">
+        <div style="font-weight:800; font-size:17px; color:var(--ink); margin-bottom:4px;">ملصق الحضور الذكي: <b>${esc(config.shopName)}</b></div>
+        <div class="muted" style="font-size:12.5px; margin-bottom:14px;">الرابط المشفر: <code style="font-size:11px; word-break:break-all; background:#fff; padding:2px 6px; border-radius:4px;">${getShopQRUrl()}</code></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-forest" onclick="printShopQRPoster()">🖨️ طباعة ملصق المحل (جاهز A4/A5)</button>
+          <button class="btn btn-outline btn-sm" onclick="refreshShopQRToken()">🔄 تجديد رمز الأمان للـ QR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>النسخ الاحتياطي والاستعادة</h2>
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
       <button class="btn btn-brass" onclick="downloadBackup()">📥 تنزيل نسخة احتياطية كاملة (JSON)</button>
@@ -2591,6 +2737,7 @@ function saveSettings(){
   config.geofenceRadius = Number(document.getElementById('cfg-geofence').value||150);
   config.shopName = document.getElementById('cfg-shop').value.trim();
   config.ownerPin = document.getElementById('cfg-pin').value.trim();
+  config.customLogo = document.getElementById('cfg-logo') ? document.getElementById('cfg-logo').value.trim() : (config.customLogo||'');
   saveConfig(); render(); showToast('تم حفظ الإعدادات بنجاح', 'success');
 }
 
@@ -2642,8 +2789,168 @@ async function restoreBackup(){
     ]);
     showToast('تمت استعادة البيانات بنجاح 🎉', 'success');
     render();
-  }catch(e){
-    showToast('حدث خطأ أثناء الاستعادة، تحقق من الإنترنت', 'error');
+/* ================= QR CODE MANAGEMENT & SCANNER ================= */
+function getShopQRUrl(){
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('shop', state.shopId);
+  url.searchParams.set('qr', (config && config.qrToken) ? config.qrToken : state.shopId);
+  return url.toString();
+}
+
+function renderShopQRToElement(containerId, size = 180){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML = '';
+  const qrUrl = getShopQRUrl();
+  if(window.QRCode){
+    new QRCode(el, {
+      text: qrUrl,
+      width: size,
+      height: size,
+      colorDark: "#1B263B",
+      colorLight: "#FFFFFF",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  } else {
+    const imgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(qrUrl)}&color=1B263B`;
+    el.innerHTML = `<img src="${imgUrl}" alt="QR Code" style="width:${size}px; height:${size}px; border-radius:8px;">`;
+  }
+}
+
+function printShopQRPoster(){
+  const qrUrl = getShopQRUrl();
+  const qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(qrUrl)}&color=1B263B`;
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>ملصق الحضور الذكي — ${esc(config.shopName)}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Markazi+Text:wght@700&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Cairo', sans-serif; text-align: center; padding: 30px 20px; background: #fff; color: #1B263B; margin: 0; }
+        .poster { max-width: 550px; margin: 0 auto; border: 10px double #A87919; border-radius: 24px; padding: 36px 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); background: #FFFDF8; }
+        .logo { height: 85px; margin-bottom: 8px; }
+        h1 { font-family: 'Markazi Text', serif; font-size: 38px; margin: 0 0 4px; color: #1B263B; }
+        .subtitle { font-size: 17px; color: #A87919; font-weight: 800; margin-bottom: 20px; }
+        .qr-box { background: #F6F3EB; border: 3px dashed #A87919; border-radius: 18px; padding: 20px; display: inline-block; margin-bottom: 20px; box-shadow: inset 0 2px 6px rgba(0,0,0,0.05); }
+        .qr-box img { width: 280px; height: 280px; display: block; border-radius: 8px; }
+        .instructions { font-size: 16px; font-weight: 700; color: #334155; line-height: 1.6; margin-bottom: 20px; }
+        .step { background: #EDE7D8; padding: 8px 16px; border-radius: 20px; display: inline-block; margin: 4px; font-size: 14px; font-weight: 800; color: #1B263B; }
+        .footer { font-size: 13px; color: #64748B; margin-top: 20px; border-top: 1px solid #DFD7C2; padding-top: 14px; font-weight: 600; }
+        @media print { .no-print { display: none; } body { padding: 0; } .poster { border-width: 6px; box-shadow: none; } }
+      </style>
+    </head>
+    <body>
+      <div class="no-print" style="margin-bottom:20px;">
+        <button onclick="window.print()" style="padding:12px 24px; font-family:'Cairo'; font-size:16px; font-weight:700; background:#15803D; color:#fff; border:none; border-radius:8px; cursor:pointer;">🖨️ طباعة الملصق الآن (A4)</button>
+      </div>
+      <div class="poster">
+        <img class="logo" src="${getAppLogo()}" alt="الفتح" onerror="this.onerror=null; this.src='${DEFAULT_LOGO_SVG}';">
+        <h1>${esc(config.shopName)}</h1>
+        <div class="subtitle">نظام تسجيل الحضور والانصراف الذكي</div>
+        <div class="qr-box">
+          <img src="${qrImg}" alt="QR Code">
+        </div>
+        <div class="instructions">
+          📱 <b>امسح الرمز بكاميرا هاتفك لتسجيل الحضور فوراً</b>
+          <div style="margin-top:10px;">
+            <span class="step">1. افتح كاميرا هاتفك</span>
+            <span class="step">2. وجّه الكاميرا للرمز</span>
+            <span class="step">3. تم تسجيل حضورك في ثانية ✓</span>
+          </div>
+        </div>
+        <div class="footer">الفتح — دفتر تقييم وأجور المتعاونين</div>
+      </div>
+    </body>
+    </html>
+  `);
+  win.document.close();
+}
+
+async function refreshShopQRToken(){
+  if(!confirm('هل تريد بالتأكيد تجديد رمز QR الأمني؟ سيتطلب ذلك إعادة طباعة الملصق.')) return;
+  config.qrToken = uid();
+  saveConfig();
+  logActivity(`${state.session.name} جدّد رمز QR الأمني للمحل`);
+  showToast('تم تجديد رمز QR الأمني بنجاح ✅', 'success');
+  render();
+}
+
+let qrStream = null;
+let qrScanInterval = null;
+
+async function openQRScanner(){
+  const modal = document.getElementById('qr-scanner-modal');
+  if(!modal) return;
+  modal.style.display = 'flex';
+  const video = document.getElementById('qr-video');
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = qrStream;
+    video.setAttribute('playsinline', true);
+    await video.play();
+    qrScanInterval = requestAnimationFrame(scanQRFrame);
+  } catch(err) {
+    console.error(err);
+    showToast('تعذر فتح الكاميرا، تأكد من إعطاء الإذن للمتصفح بالوصول للكاميرا', 'error', 4000);
+    closeQRScanner();
+  }
+}
+
+function scanQRFrame(){
+  const video = document.getElementById('qr-video');
+  const canvas = document.getElementById('qr-canvas');
+  if(!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA){
+    if(qrStream) qrScanInterval = requestAnimationFrame(scanQRFrame);
+    return;
+  }
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  
+  if(window.jsQR){
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    if(code && code.data){
+      handleScannedQR(code.data);
+      return;
+    }
+  }
+  if(qrStream) qrScanInterval = requestAnimationFrame(scanQRFrame);
+}
+
+function closeQRScanner(){
+  if(qrScanInterval) cancelAnimationFrame(qrScanInterval);
+  if(qrStream){
+    qrStream.getTracks().forEach(track => track.stop());
+    qrStream = null;
+  }
+  const modal = document.getElementById('qr-scanner-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+async function handleScannedQR(data){
+  closeQRScanner();
+  if(navigator.vibrate) try{ navigator.vibrate([50, 80, 50]); }catch(e){}
+  try {
+    let url;
+    try { url = new URL(data); } catch(e){ url = null; }
+    const scannedShop = url ? url.searchParams.get('shop') : null;
+
+    if(scannedShop && scannedShop === state.shopId){
+      const splitTime = config.shiftSplitTime || '14:30';
+      const activeShift = (nowTime() < splitTime) ? 'صباحي' : 'مسائي';
+      showToast('تم التعرف على رمز المحل بنجاح! جارِ تسجيل الحضور...', 'success');
+      await oneTapSelfIn(activeShift);
+    } else {
+      showToast('رمز QR غير مطابق لهذا المحل', 'error');
+    }
+  } catch(e){
+    showToast('رمز QR غير صالح', 'error');
   }
 }
 
@@ -3419,13 +3726,19 @@ function workerCheckin(){
 
   const netNote = config.shopPublicIP ? `<p class="muted" style="margin-top:8px; font-size:12.5px;">🔒 التسجيل مشروط بالاتصال بشبكة واي فاي المحل</p>` : '';
 
-  // 1. شريط تثبيت التطبيق على الشاشة الرئيسية (PWA)
+  // 1. شريط تثبيت التطبيق على الشاشة الرئيسية وزر مسح الباركود
   const pwaBanner = `
     <div class="pwa-banner">
       <div class="pwa-banner-text">
         📲 <b>تثبيت التطبيق على شاشة هاتفك:</b>
         <div style="font-size:12px; opacity:0.9; margin-top:2px;">اضغط خيارات المتصفح (⋮) ثم «إضافة إلى الشاشة الرئيسية» للدخول بلمسة واحدة كل يوم.</div>
       </div>
+    </div>
+    <div style="text-align:center; margin-bottom:14px;">
+      <button class="btn btn-outline" style="width:100%; max-width:380px; margin:0 auto; padding:12px 18px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:800; border:1.5px solid var(--brass); color:var(--brass); background:var(--amber-bg); border-radius:var(--radius-md); box-shadow:var(--shadow-sm);" onclick="openQRScanner()">
+        <span style="font-size:20px;">📷</span>
+        <span>مسح رمز QR المحل للحضور الفوري</span>
+      </button>
     </div>
   `;
 
@@ -3782,11 +4095,31 @@ function workerNotifications(){
 
 /* ================= INITIALIZATION & REAL-TIME CLOCK ================= */
 window.addEventListener('DOMContentLoaded', async function(){
-  await loadShopsRegistry();
+  try {
+    await loadShopsRegistry();
+  } catch(e){
+    console.error('Error loading shops registry:', e);
+  }
+
   const params = new URLSearchParams(window.location.search);
   const shopParam = params.get('shop');
+  const qrParam = params.get('qr');
+
   if(shopParam && shopsRegistry.shops.some(s=>s.id===shopParam)){
-    selectShop(shopParam);
+    state.shopId = shopParam;
+    await loadAll();
+
+    // إذا تم المسح عبر كاميرا الهاتف مباشرة وكان المتعاون متصلاً
+    if(qrParam && state.session && state.session.role === 'worker'){
+      const splitTime = (config && config.shiftSplitTime) ? config.shiftSplitTime : '14:30';
+      const activeShift = (nowTime() < splitTime) ? 'صباحي' : 'مسائي';
+      const today = todayStr();
+      const rec = attendance.find(a => a.workerId === state.session.id && a.date === today && a.shift === activeShift);
+      if(!rec){
+        showToast('تم مسح رمز QR بنجاح! جارِ تسجيل حضورك...', 'success');
+        await oneTapSelfIn(activeShift);
+      }
+    }
   } else {
     state.screen = 'shopselect';
     render();
